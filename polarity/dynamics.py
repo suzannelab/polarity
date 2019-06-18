@@ -16,6 +16,7 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
 
     @staticmethod
     def update_height(eptm):
+        # Barriere sur les "extremités" avec une sphere
         r = eptm.settings['barrier_ray']
         eptm.vert_df["theta"] = np.arcsin((eptm.vert_df.z / r).clip(-1, 1))
 
@@ -34,6 +35,17 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
         edge_height = eptm.upcast_srce(eptm.vert_df[["height", "rho"]])
         edge_height.set_index(eptm.edge_df["face"], append=True, inplace=True)
         eptm.face_df[["height", "rho"]] = edge_height.mean(level="face")
+
+        """# Barriere sur le "centre" avec un cylindre
+                                r = eptm.settings['barrier_ray_cylinder']
+                                sheet.vert_df["rho"] = np.hypot(sheet.vert_df['x'], sheet.vert_df['y'])
+                                eptm.vert_df["delta_rho"] = eptm.vert_df['rho'] - r
+
+                                eptm.vert_df["height"] = eptm.vert_df["rho"] - eptm.vert_df["basal_shift"]
+
+                                edge_height = eptm.upcast_srce(eptm.vert_df[["height", "rho"]])
+                                edge_height.set_index(eptm.edge_df["face"], append=True, inplace=True)
+                                eptm.face_df[["height", "rho"]] = edge_height.mean(level="face")"""
 
 
 class RadialTension(effectors.AbstractEffector):
@@ -96,4 +108,5 @@ model = model_factory(
         effectors.FaceContractility,
         effectors.FaceAreaElasticity,
         effectors.LumenVolumeElasticity,
+        effectors.LineTension,
     ], effectors.FaceAreaElasticity)
