@@ -12,15 +12,15 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
     @classmethod
     def update_all(cls, eptm):
         super().update_all(eptm)
-        cls.update_height(eptm)
+        cls.center(eptm)
+        #cls.update_height(eptm)
 
     @staticmethod
-    def update_height(eptm):
+    def update_height2(eptm):
         # Barriere sur les "extremités" avec une sphere
         r = eptm.settings['barrier_ray']
-        eptm.vert_df["theta"] = np.arcsin((eptm.vert_df.z / r).clip(-1, 1))
 
-        eptm.vert_df["barrier_rho"] = r * np.cos(eptm.vert_df["theta"])
+        eptm.vert_df["barrier_rho"] = r
 
         eptm.vert_df["rho"] = np.sqrt(eptm.vert_df['x']**2 +
                                       eptm.vert_df['y']**2 +
@@ -28,13 +28,13 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
 
         eptm.vert_df["delta_rho"] = (
             eptm.vert_df["rho"] - eptm.vert_df["barrier_rho"])
-        eptm.vert_df["delta_rho"] = [0 if dr < 0 else dr for dr in eptm.vert_df.delta_rho]
 
-        eptm.vert_df["height"] = eptm.vert_df["rho"] - eptm.vert_df["basal_shift"]
+        eptm.vert_df["delta_rho"] *= (eptm.vert_df["delta_rho"] > 0).astype(float)
+
+        eptm.vert_df["height"] = eptm.vert_df["rho"]
 
         edge_height = eptm.upcast_srce(eptm.vert_df[["height", "rho"]])
         edge_height.set_index(eptm.edge_df["face"], append=True, inplace=True)
-        eptm.face_df[["height", "rho"]] = edge_height.mean(level="face")
 
         """# Barriere sur le "centre" avec un cylindre
                                 r = eptm.settings['barrier_ray_cylinder']
@@ -108,5 +108,4 @@ model = model_factory(
         effectors.FaceContractility,
         effectors.FaceAreaElasticity,
         effectors.LumenVolumeElasticity,
-        effectors.LineTension,
     ], effectors.FaceAreaElasticity)
