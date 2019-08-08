@@ -49,13 +49,14 @@ def apoptosis(sheet, manager, **kwargs):
 
     apoptosis_spec = default_apoptosis_spec
     apoptosis_spec.update(**kwargs)
-
+    manager.append(apoptosis, **apoptosis_spec)
     # Small variable name for some spec
     face = apoptosis_spec["face"]
     current_traction = apoptosis_spec["current_traction"]
     face_area = sheet.face_df.loc[face, "area"]
 
-    if face_area > apoptosis_spec["critical_area"]:
+    #if face_area > apoptosis_spec["critical_area"]:
+    if face_area > sheet.face_df.loc[face, "critical_area"]:
         # contract
         contract(
             sheet,
@@ -77,22 +78,22 @@ def apoptosis(sheet, manager, **kwargs):
                 for _, neighbor in neighbors.iterrows()
             ])
 
-    proba_tension = np.exp(-face_area / apoptosis_spec["critical_area"])
-    aleatory_number = random.uniform(0, 1)
+    """proba_tension = np.exp(-face_area / apoptosis_spec["critical_area"])
+                aleatory_number = random.uniform(0, 1)
 
-    if current_traction < apoptosis_spec["max_traction"]:
-        if aleatory_number < proba_tension:
-            current_traction = current_traction + 1
-            ab_pull(sheet, face, apoptosis_spec[
-                "radial_tension"], distributed=False)
-            apoptosis_spec.update({"current_traction": current_traction})
+                if current_traction < apoptosis_spec["max_traction"]:
+                    if aleatory_number < proba_tension:
+                        current_traction = current_traction + 1
+                        ab_pull(sheet, face, apoptosis_spec[
+                            "radial_tension"], distributed=False)
+                        apoptosis_spec.update({"current_traction": current_traction})
 
-    elif current_traction >= apoptosis_spec["max_traction"]:
-        if sheet.face_df.loc[face, "num_sides"] > 3:
-            exchange(sheet, face, apoptosis_spec["geom"])
-        else:
-            remove(sheet, face, apoptosis_spec["geom"])
-            return
+                elif current_traction >= apoptosis_spec["max_traction"]:
+                    if sheet.face_df.loc[face, "num_sides"] > 3:
+                        exchange(sheet, face, apoptosis_spec["geom"])
+                    else:
+                        remove(sheet, face, apoptosis_spec["geom"])
+                        return"""
 
     manager.append(apoptosis, **apoptosis_spec)
 
