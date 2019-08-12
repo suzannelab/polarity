@@ -7,6 +7,19 @@ from tyssue.geometry.sheet_geometry import SheetGeometry
 from tyssue.behaviors.sheet.actions import contract, ab_pull, exchange, remove, contract
 from tyssue.behaviors.sheet.basic_events import contraction
 
+
+def apoptosis_patterning(sheet, manager, **kwargs):
+    """Apoptosis process patterning, which put cell in apoptosis progressively.
+
+
+    """
+
+    # variable a passer en parametre?
+
+    return 0
+
+
+
 default_apoptosis_spec = {
     "face_id": -1,
     "face": -1,
@@ -49,20 +62,19 @@ def apoptosis(sheet, manager, **kwargs):
 
     apoptosis_spec = default_apoptosis_spec
     apoptosis_spec.update(**kwargs)
-    manager.append(apoptosis, **apoptosis_spec)
+    dt = sheet.settings.get('dt', 1.0)
     # Small variable name for some spec
     face = apoptosis_spec["face"]
     current_traction = apoptosis_spec["current_traction"]
     face_area = sheet.face_df.loc[face, "area"]
 
-    #if face_area > apoptosis_spec["critical_area"]:
-    if face_area > sheet.face_df.loc[face, "critical_area"]:
+    if face_area > apoptosis_spec["critical_area"]:
         # contract
         contract(
             sheet,
             face,
-            apoptosis_spec["contract_rate"],
-            True)
+            apoptosis_spec["contract_rate"]*dt,
+            False)
         # contract neighbors
         neighbors = sheet.get_neighborhood(
             face, apoptosis_spec["contract_span"]
@@ -73,27 +85,29 @@ def apoptosis(sheet, manager, **kwargs):
             [
                 (
                     contraction,
-                    _neighbor_contractile_increase(neighbor, apoptosis_spec),
+                    _neighbor_contractile_increase(
+                        neighbor, apoptosis_spec),
                 )
                 for _, neighbor in neighbors.iterrows()
             ])
 
-    """proba_tension = np.exp(-face_area / apoptosis_spec["critical_area"])
-                aleatory_number = random.uniform(0, 1)
+    #proba_tension = np.exp(-face_area / apoptosis_spec["critical_area"])
+    proba_tension = np.exp(-face_area / 20)
+    aleatory_number = random.uniform(0, 1)
 
-                if current_traction < apoptosis_spec["max_traction"]:
-                    if aleatory_number < proba_tension:
-                        current_traction = current_traction + 1
-                        ab_pull(sheet, face, apoptosis_spec[
-                            "radial_tension"], distributed=False)
-                        apoptosis_spec.update({"current_traction": current_traction})
+    if current_traction < apoptosis_spec["max_traction"]:
+        if aleatory_number < proba_tension:
+            current_traction = current_traction + 1
+            ab_pull(sheet, face, apoptosis_spec[
+                "radial_tension"], distributed=False)
+            apoptosis_spec.update({"current_traction": current_traction})
 
-                elif current_traction >= apoptosis_spec["max_traction"]:
-                    if sheet.face_df.loc[face, "num_sides"] > 3:
-                        exchange(sheet, face, apoptosis_spec["geom"])
-                    else:
-                        remove(sheet, face, apoptosis_spec["geom"])
-                        return"""
+    elif current_traction >= apoptosis_spec["max_traction"]:
+        if sheet.face_df.loc[face, "num_sides"] > 3:
+            exchange(sheet, face, apoptosis_spec["geom"])
+        else:
+            remove(sheet, face, apoptosis_spec["geom"])
+            return
 
     manager.append(apoptosis, **apoptosis_spec)
 

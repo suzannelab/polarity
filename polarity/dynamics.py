@@ -104,7 +104,7 @@ class BarrierElasticity(effectors.AbstractEffector):
 model = model_factory(
     [
         RadialTension,
-        BarrierElasticity,
+        #BarrierElasticity,
         effectors.FaceContractility,
         effectors.FaceAreaElasticity,
         effectors.LumenVolumeElasticity,
