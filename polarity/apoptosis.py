@@ -28,7 +28,7 @@ default_apoptosis_spec = {
     "contract_rate": 0.1,
     "basal_contract_rate": 1.001,
     "contract_span": 2,
-    "max_traction": 30,
+    "max_traction": 10,
     "current_traction": 0,
     "geom": SheetGeometry,
 }
@@ -73,46 +73,44 @@ def apoptosis(sheet, manager, **kwargs):
         contract(
             sheet,
             face,
-            apoptosis_spec["contract_rate"]*dt,
+            apoptosis_spec["contract_rate"] * dt,
             False)
+
+        ## Rajouter une condition sur la constriction des voisins ou non ?
+
         # contract neighbors
         neighbors = sheet.get_neighborhood(
             face, apoptosis_spec["contract_span"]
         ).dropna()
         neighbors["id"] = sheet.face_df.loc[neighbors.face, "id"].values
-
         manager.extend(
             [
                 (
                     contraction,
                     _neighbor_contractile_increase(
-                        neighbor, apoptosis_spec),
+                        neighbor, dt, apoptosis_spec),
                 )
                 for _, neighbor in neighbors.iterrows()
             ])
 
-    #proba_tension = np.exp(-face_area / apoptosis_spec["critical_area"])
-    proba_tension = np.exp(-face_area / 20)
-    aleatory_number = random.uniform(0, 1)
-
-    if current_traction < apoptosis_spec["max_traction"]:
-        if aleatory_number < proba_tension:
-            current_traction = current_traction + 1
+    if face_area < 20 * apoptosis_spec["critical_area"]:
+        if current_traction < apoptosis_spec["max_traction"]:
             ab_pull(sheet, face, apoptosis_spec[
-                "radial_tension"], distributed=False)
+                "radial_tension"] * dt, distributed=False)
+            current_traction = current_traction + dt
             apoptosis_spec.update({"current_traction": current_traction})
 
-    elif current_traction >= apoptosis_spec["max_traction"]:
-        if sheet.face_df.loc[face, "num_sides"] > 3:
-            exchange(sheet, face, apoptosis_spec["geom"])
-        else:
-            remove(sheet, face, apoptosis_spec["geom"])
-            return
+        elif current_traction >= apoptosis_spec["max_traction"]:
+            if sheet.face_df.loc[face, "num_sides"] > 3:
+                exchange(sheet, face, apoptosis_spec["geom"])
+            else:
+                remove(sheet, face, apoptosis_spec["geom"])
+                return
 
     manager.append(apoptosis, **apoptosis_spec)
 
 
-def _neighbor_contractile_increase(neighbor, apoptosis_spec):
+def _neighbor_contractile_increase(neighbor, dt, apoptosis_spec):
 
     contract = apoptosis_spec["contract_rate"]
     basal_contract = apoptosis_spec["basal_contract_rate"]
@@ -124,7 +122,7 @@ def _neighbor_contractile_increase(neighbor, apoptosis_spec):
     specs = {
         "face_id": neighbor["id"],
         "contractile_increase": increase,
-        "critical_area": apoptosis_spec["critical_area"],
+        "critical_area": apoptosis_spec["critical_area"] * dt,
         "max_contractility": 50,
         "multiple": True,
         "unique": False,
