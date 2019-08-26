@@ -96,7 +96,7 @@ def apoptosis(sheet, manager, **kwargs):
     if face_area < 20 * apoptosis_spec["critical_area"]:
         if current_traction < apoptosis_spec["max_traction"]:
             ab_pull(sheet, face, apoptosis_spec[
-                "radial_tension"] * dt, distributed=False)
+                "radial_tension"], distributed=False)
             current_traction = current_traction + dt
             apoptosis_spec.update({"current_traction": current_traction})
 
