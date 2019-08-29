@@ -8,12 +8,50 @@ from tyssue.behaviors.sheet.actions import (ab_pull,
                                             increase_linear_tension)
 from tyssue.behaviors.sheet.basic_events import contraction_line_tension
 
+default_pattern = {
+    "t": 0.,
+    "dt": 0.1,
+    "time_of_last_apoptosis": 30
+}
+
 
 def apoptosis_patterning(sheet, manager, **kwargs):
-    # ViscousSolver...
-    # Need to be imported from a notebook...
+    """Pattern of face apoptosis entry.
 
-    return 0
+    Apoptotic cell enter in apoptosis by following a time dependent pattern from
+    ventral to dorsal part of the leg tissue.
+
+    Parameters
+    ----------
+    sheet : a :class:`Sheet` object
+    manager : a :class:`EventManager` object
+    t : float : current simulation time
+    dt : float : time step
+    time_of_last_apoptosis : float : time spend to go to dorsal from ventral.
+
+    """
+    specs = default_pattern
+    specs.update(**kwargs)
+    t = specs['t']
+    end = specs["time_of_last_apoptosis"]
+
+    phi_min = -t * max(np.abs(sheet.face_df.phi)) / \
+        end + max(np.abs(sheet.face_df.phi))
+
+    l_index_apoptosis_cell = sheet.face_df[(np.abs(sheet.face_df.phi) > phi_min) &
+                                           (sheet.face_df.apoptosis > 0)
+                                           ].index.values
+    apopto_kwargs = sheet.settings['apoptosis'].copy()
+    for c in l_index_apoptosis_cell:
+        apopto_kwargs.update(
+            {
+                'face_id': c,
+            }
+        )
+        manager.append(apoptosis, **apopto_kwargs)
+
+    specs.update({"t": specs['t'] + specs['dt']})
+    manager.append(apoptosis_patterning, **specs)
 
 
 default_apoptosis_spec = {
