@@ -55,13 +55,13 @@ class RadialTension(effectors.AbstractEffector):
     dimensions = units.line_tension
     magnitude = 'radial_tension'
     label = 'Apical basal tension'
-    element = 'vert'
-    specs = {'vert': {'height',
+    element = 'face'
+    specs = {'face': {'height',
                       'radial_tension'}}
 
     @staticmethod
     def energy(eptm):
-        return eptm.vert_df.eval(
+        return eptm.face_df.eval(
             'height * radial_tension')
 
     @staticmethod
