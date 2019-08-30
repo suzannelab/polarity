@@ -5,7 +5,8 @@ from tyssue.behaviors.sheet.actions import (ab_pull,
                                             exchange,
                                             remove,
                                             decrease,
-                                            increase_linear_tension)
+                                            increase_linear_tension,
+                                            set_value)
 from tyssue.behaviors.sheet.basic_events import contraction_line_tension
 
 default_pattern = {
@@ -139,8 +140,12 @@ def apoptosis(sheet, manager, **kwargs):
 
     if face_area < apoptosis_spec["critical_area"]:
         if current_traction < apoptosis_spec["max_traction"]:
-            ab_pull(sheet, face, apoptosis_spec[
-                "radial_tension"], distributed=True)
+            # AB pull
+            set_value(sheet,
+                      'face',
+                      face,
+                      apoptosis_spec['radial_tension'],
+                      col="radial_tension")
             current_traction = current_traction + dt
             apoptosis_spec.update({"current_traction": current_traction})
 
