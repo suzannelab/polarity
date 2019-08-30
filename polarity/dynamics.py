@@ -9,11 +9,12 @@ from tyssue.geometry.sheet_geometry import ClosedSheetGeometry, SheetGeometry
 class EllipsoidLameGeometry(ClosedSheetGeometry):
     # Entoure l'ellipsoide de lame d'une sphere,
     # Afin de "compresser" le tissu
+
     @classmethod
     def update_all(cls, eptm):
         super().update_all(eptm)
         cls.center(eptm)
-        #cls.update_height(eptm)
+        # cls.update_height(eptm)
 
     @staticmethod
     def update_height2(eptm):
@@ -29,7 +30,8 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
         eptm.vert_df["delta_rho"] = (
             eptm.vert_df["rho"] - eptm.vert_df["barrier_rho"])
 
-        eptm.vert_df["delta_rho"] *= (eptm.vert_df["delta_rho"] > 0).astype(float)
+        eptm.vert_df[
+            "delta_rho"] *= (eptm.vert_df["delta_rho"] > 0).astype(float)
 
         eptm.vert_df["height"] = eptm.vert_df["rho"]
 
@@ -54,21 +56,27 @@ class RadialTension(effectors.AbstractEffector):
     magnitude = 'radial_tension'
     label = 'Apical basal tension'
     element = 'vert'
-    specs = {'vert': {'is_active',
-                      'height',
+    specs = {'vert': {'height',
                       'radial_tension'}}
 
     @staticmethod
     def energy(eptm):
         return eptm.vert_df.eval(
-            'height * radial_tension * is_active')
+            'height * radial_tension')
 
     @staticmethod
     def gradient(eptm):
-        grad = height_grad(eptm) * to_nd(
-            eptm.vert_df.eval('radial_tension'), 3)
-        grad.columns = ['g' + c for c in eptm.coords]
-        return grad, None
+
+        # upcast_face(radial_tension) / numsides * upcast_srce (height)
+
+        upcast_f = eptm.upcast_face(
+            eptm.face_df[['radial_tension', 'num_sides']])
+        upcast_tension = (upcast_f['radial_tension'] / upcast_f['num_sides'])
+
+        upcast_height = eptm.upcast_srce(height_grad(eptm))
+        grad_srce = to_nd(upcast_tension, 3) * upcast_height
+        grad_srce.columns = ["g" + u for u in eptm.coords]
+        return grad_srce, None
 
 
 class BarrierElasticity(effectors.AbstractEffector):
@@ -104,7 +112,7 @@ class BarrierElasticity(effectors.AbstractEffector):
 model = model_factory(
     [
         RadialTension,
-        #BarrierElasticity,
+        # BarrierElasticity,
         effectors.FaceContractility,
         effectors.FaceAreaElasticity,
         effectors.LumenVolumeElasticity,
