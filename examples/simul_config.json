@@ -1,0 +1,55 @@
+{   "various":
+        {"author": "st",
+         "date": "01012019"
+        },
+    "solver":
+        {"solver": "QSSolver",
+         "with_T1": "False",
+         "with_T3": "False",
+         "with_collision": "False"
+        },
+    "simulation":
+        {
+            "time_step": 1.0,
+            "nb_steps": 150.0,
+            "viscosity": 0.1
+        },
+
+	"settings":
+		{"geometry": "cylindrical",
+		 "height_axis": "z",
+		 "nrj_norm_factor": 784,
+		 "lumen_prefered_vol": 1655117.87836963126,
+		 "lumen_vol": 1653762.4584016968,
+		 "lumen_vol_elasticity": 0.00002,
+		 "threshold_length": 0.1
+		},
+    "apoptosis":
+        {
+        "shrink_rate": 1.1,
+        "critical_area": 5.0,
+        "contract_rate": 1.08,
+        "basal_contract_rate": 1.01,
+        "contract_span": 4,
+        "radial_tension": 30,
+        "max_traction":30,
+        "current_traction":0,
+        "geom": "EllipsoidGeometry"
+        },
+    "delamination":
+        {
+        "face_id": -1,
+        "face": -1,
+        "contract_rate": 2,
+        "critical_area": 1e-2,
+        "radial_tension": 1.0,
+        "contract_neighbors": "True",
+        "critical_area_neighbors": 10,
+        "contract_span": 2,
+        "basal_contract_rate": 1.001,
+        "current_traction": 0,
+        "max_traction": 30,
+        "contraction_column": "contractility"
+        }
+
+}
