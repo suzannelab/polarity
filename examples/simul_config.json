@@ -4,9 +4,9 @@
         },
     "solver":
         {"solver": "QSSolver",
-         "with_T1": "False",
-         "with_T3": "False",
-         "with_collision": "False"
+         "with_T1": false,
+         "with_T3": false,
+         "with_collisions": false
         },
     "simulation":
         {
@@ -23,33 +23,6 @@
 		 "lumen_vol": 1653762.4584016968,
 		 "lumen_vol_elasticity": 0.00002,
 		 "threshold_length": 0.1
-		},
-    "apoptosis":
-        {
-        "shrink_rate": 1.1,
-        "critical_area": 5.0,
-        "contract_rate": 1.08,
-        "basal_contract_rate": 1.01,
-        "contract_span": 4,
-        "radial_tension": 30,
-        "max_traction":30,
-        "current_traction":0,
-        "geom": "EllipsoidGeometry"
-        },
-    "delamination":
-        {
-        "face_id": -1,
-        "face": -1,
-        "contract_rate": 2,
-        "critical_area": 1e-2,
-        "radial_tension": 1.0,
-        "contract_neighbors": "True",
-        "critical_area_neighbors": 10,
-        "contract_span": 2,
-        "basal_contract_rate": 1.001,
-        "current_traction": 0,
-        "max_traction": 30,
-        "contraction_column": "contractility"
-        }
+		}
 
 }

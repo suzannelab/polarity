@@ -49,7 +49,12 @@ def apoptosis_patterning(sheet, manager, **kwargs):
                 'face_id': c,
             }
         )
-        manager.append(apoptosis, **apopto_kwargs)
+        notpresent = True
+        for tup in manager.next:
+            if c in tup[1]:
+                notpresent = False
+        if notpresent:
+            manager.append(apoptosis, **apopto_kwargs)
 
     specs.update({"t": specs['t'] + specs['dt']})
     manager.append(apoptosis_patterning, **specs)
@@ -101,7 +106,8 @@ def apoptosis(sheet, manager, **kwargs):
     dt = sheet.settings.get('dt', 1.0)
     # Small variable name for some spec
     face = apoptosis_spec["face"]
-    current_traction = apoptosis_spec["current_traction"]
+    #current_traction = apoptosis_spec["current_traction"]
+    current_traction = sheet.face_df.loc[face, "current_traction"]
     face_area = sheet.face_df.loc[face, "area"]
 
     if (face_area > apoptosis_spec["critical_area"]):
@@ -131,13 +137,12 @@ def apoptosis(sheet, manager, **kwargs):
         manager.extend(
             [
                 (
-                    contraction_line_tension,
+                    contraction_line_tension_stress_dependant,
                     _neighbor_contractile_increase(
                         neighbor, dt, apoptosis_spec),
                 )
                 for _, neighbor in neighbors.iterrows()
             ])
-
     if face_area < apoptosis_spec["critical_area"]:
         if current_traction < apoptosis_spec["max_traction"]:
             # AB pull
@@ -147,9 +152,14 @@ def apoptosis(sheet, manager, **kwargs):
                       apoptosis_spec['radial_tension'],
                       col="radial_tension")
             current_traction = current_traction + dt
+            set_value(sheet,
+                      'face',
+                      face,
+                      current_traction,
+                      col="current_traction")
             apoptosis_spec.update({"current_traction": current_traction})
 
-        elif current_traction >= apoptosis_spec["max_traction"]:
+        else:
             if sheet.face_df.loc[face, "num_sides"] > 3:
                 exchange(sheet, face, apoptosis_spec["geom"])
             else:
@@ -170,14 +180,113 @@ def _neighbor_contractile_increase(neighbor, dt, apoptosis_spec):
 
     specs = {
         "face_id": neighbor["id"],
+        "shrink_rate": (apoptosis_spec['shrink_rate'] - 1) / 10 + 1,
         "contractile_increase": increase * dt,
-        "critical_area": apoptosis_spec["critical_area"],
-        "max_contractility": 50,
         "multiple": True,
         "unique": False,
     }
 
     return specs
+
+
+default_contraction_line_tension_spec = {
+    "face_id": -1,
+    "face": -1,
+    "shrink_rate": 1.05,
+    "contractile_increase": 1.0,
+    "critical_area": 1e-2,
+    "max_contractility": 10,
+    "multiple": True,
+    "contraction_column": "line_tension",
+    "unique": True,
+}
+
+
+@face_lookup
+def contraction_line_tension_stress_dependant(sheet, manager, **kwargs):
+    """
+    Single step contraction event
+    """
+    contraction_spec = default_contraction_line_tension_spec
+    contraction_spec.update(**kwargs)
+    face = contraction_spec["face"]
+
+    if sheet.face_df.loc[face, 'apoptosis'] > 0:
+        return
+
+    # reduce prefered_area
+    critical_area = 5.
+    if sheet.face_df.loc[face, "area"] > critical_area:
+        decrease(sheet,
+                 'face',
+                 face,
+                 contraction_spec["shrink_rate"],
+                 col="prefered_area",
+                 divide=True,
+                 bound=critical_area,
+                 )
+
+    increase_linear_tension_stress(
+        sheet,
+        face,
+        contraction_spec["contractile_increase"],
+        limit=100)
+
+
+def increase_linear_tension_stress(sheet,
+                                   face,
+                                   line_tension_increase,
+                                   multiple=True,
+                                   angle=np.pi / 4,
+                                   limit=100):
+
+    model = model_factory(
+        [
+            RadialTension,
+            effectors.LineTension,
+            effectors.FaceAreaElasticity,
+            effectors.LumenVolumeElasticity,
+        ], effectors.FaceAreaElasticity)
+
+    stresses_edges = edge_projected_stress(sheet, model)
+    edges = sheet.edge_df[sheet.edge_df["face"] == face]
+
+    for index, edge in edges.iterrows():
+
+        #sheet.edge_df["line_tension"] = k_0 / (1 + np.exp(-chi*stress))
+        k_0 = 80
+        chi = 0.2
+        set_value(sheet,
+                  'edge',
+                  edge.name,
+                  20 + k_0 /
+                  (1 + np.exp(-chi * (stresses_edges[edge.name] - 40))),
+                  "line_tension")
+
+
+def edge_projected_stress(sheet, model):
+
+    force = -model.compute_gradient(sheet)
+    srce_force = sheet.upcast_srce(force)
+    trgt_force = sheet.upcast_trgt(force)
+    stress = (
+        (srce_force - trgt_force)
+        * sheet.edge_df[['u' + c for c in sheet.coords]].values
+    ).sum(axis=1)
+
+    return stress
+
+
+from tyssue.dynamics import units, effectors, model_factory
+from polarity.dynamics import RadialTension
+model = model_factory(
+    [
+        RadialTension,
+        effectors.LineTension,
+        # effectors.FaceContractility,
+        effectors.FaceAreaElasticity,
+        effectors.LumenVolumeElasticity,
+    ], effectors.FaceAreaElasticity)
 
 
 def propagate_line_tension(sheet, face):
