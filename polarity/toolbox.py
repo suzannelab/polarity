@@ -76,7 +76,7 @@ def apoptosis_lateral(sheet, code_fold=1):
             0.3 * np.exp(-(i.phi - 1.5)**2 / 0.8**2)
         aleatory_number = random.uniform(0, 1)
         if aleatory_number < proba:
-            sheet.face_df.loc[i.Index, "apoptosis"] = 2
+            sheet.face_df.loc[i.Index, "apoptosis"] = 1
 
 
 def apoptosis_dorsal(sheet, code_fold=1):
@@ -87,4 +87,4 @@ def apoptosis_dorsal(sheet, code_fold=1):
         proba = 0.2 * np.exp(-(i.phi)**2 / 0.4 * 2)
         aleatory_number = random.uniform(0, 1)
         if aleatory_number < proba:
-            sheet.face_df.loc[i.Index, "apoptosis"] = 3
+            sheet.face_df.loc[i.Index, "apoptosis"] = 1
