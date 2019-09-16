@@ -15,6 +15,7 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
         super().update_all(eptm)
         cls.center(eptm)
         # cls.update_height(eptm)
+        cls.update_height2(eptm)
 
     @staticmethod
     def update_height2(eptm):
@@ -37,6 +38,8 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
 
         edge_height = eptm.upcast_srce(eptm.vert_df[["height", "rho"]])
         edge_height.set_index(eptm.edge_df["face"], append=True, inplace=True)
+
+        eptm.face_df[["height", "rho"]] = edge_height.mean(level="face")
 
         """# Barriere sur le "centre" avec un cylindre
                                 r = eptm.settings['barrier_ray_cylinder']

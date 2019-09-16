@@ -131,20 +131,20 @@ def apoptosis(sheet, manager, **kwargs):
             limit=100)
 
     # contract neighbors
-    if apoptosis_spec["contract_span"] > 0:
-        neighbors = sheet.get_neighborhood(
-            face, apoptosis_spec["contract_span"]
-        ).dropna()
-        neighbors["id"] = sheet.face_df.loc[neighbors.face, "id"].values
-        manager.extend(
-            [
-                (
-                    contraction_line_tension_stress_dependant,
-                    _neighbor_contractile_increase(
-                        neighbor, dt, apoptosis_spec, sheet),
-                )
-                for _, neighbor in neighbors.iterrows()
-            ])
+    neighbors = sheet.get_neighborhood(
+        face, apoptosis_spec["contract_span"]
+    ).dropna()
+    #neighbors["id"] = sheet.face_df.loc[neighbors.face, "id"].values
+    manager.extend(
+        [
+            (
+                contraction_line_tension_stress_dependant,
+                _neighbor_contractile_increase(
+                    neighbor, dt, apoptosis_spec, sheet),
+            )
+            for _, neighbor in neighbors.iterrows()
+        ])
+
     if face_area < apoptosis_spec["critical_area"]:
         if current_traction < apoptosis_spec["max_traction"]:
             # AB pull
@@ -174,13 +174,18 @@ def apoptosis(sheet, manager, **kwargs):
 
 def _neighbor_contractile_increase(neighbor, dt, apoptosis_spec, sheet):
 
-    specs = sheet.settings['contraction_lt_kwargs']
-    specs.update({
-        "face_id": neighbor["id"],
-        #"shrink_rate": (apoptosis_spec['shrink_rate'] - 1) / 2 + 1,
-        "shrink_rate": apoptosis_spec['shrink_rate']
-    })
+    specs = sheet.settings['contraction_lt_kwargs'].copy()
 
+    increase = (
+        -(apoptosis_spec['shrink_rate'] - apoptosis_spec['basal_shrink_rate']) / apoptosis_spec["contract_span"]
+    ) * neighbor["order"] + apoptosis_spec['shrink_rate']
+
+    specs.update({
+        "face_id": neighbor.face,
+        "shrink_rate": increase,
+        #(apoptosis_spec['shrink_rate'] - 1) / 2 + 1,
+        "unique": False
+    })
     return specs
 
 
@@ -203,24 +208,33 @@ def contraction_line_tension_stress_dependant(sheet, manager, **kwargs):
     contraction_spec.update(**kwargs)
     face = contraction_spec["face"]
 
-    if sheet.face_df.loc[face, 'apoptosis'] > 0:
-        return
+    """if sheet.face_df.loc[face, 'apoptosis'] > 0:
+                    return"""
 
-    if sheet.face_df.loc[face, "area"] > contraction_spec['critical_area']:
-        decrease(sheet,
-                 'face',
-                 face,
-                 contraction_spec["shrink_rate"],
-                 col="prefered_area",
-                 divide=True,
-                 bound=contraction_spec['critical_area'],
-                 )
+    #if sheet.face_df.loc[face, "prefered_area"] > contraction_spec['critical_area']:
+
+    decrease(sheet,
+             'face',
+             face,
+             contraction_spec["shrink_rate"],
+             col="prefered_area",
+             divide=True,
+             bound=contraction_spec['critical_area'],
+             )
+
+    """increase_linear_tension(
+            sheet,
+            face,
+            1.08, #contraction_spec['contract_rate'] * dt,
+            multiple=True,
+            isotropic=True,
+            limit=100)"""
 
     increase_linear_tension_stress(
-        sheet,
-        face,
-        contraction_spec["model"],
-        limit=100)
+                    sheet,
+                    face,
+                    contraction_spec["model"],
+                    limit=100)
 
 
 def increase_linear_tension_stress(sheet,

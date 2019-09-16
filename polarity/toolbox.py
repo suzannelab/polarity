@@ -84,7 +84,14 @@ def apoptosis_dorsal(sheet, code_fold=1):
     fold_cell = sheet.face_df[sheet.face_df.fold == code_fold]
 
     for i in fold_cell.itertuples():
-        proba = 0.2 * np.exp(-(i.phi)**2 / 0.4 * 2)
+        proba = 0.25 * np.exp(-(i.phi)**2 / 0.4 * 2)
         aleatory_number = random.uniform(0, 1)
         if aleatory_number < proba:
             sheet.face_df.loc[i.Index, "apoptosis"] = 1
+
+
+def  predefined_apoptotic_cell(sheet):
+    list_apopto = [0,1,2,3]
+
+    for i in list_apopto:
+        sheet.face_df.loc[i, 'apoptosis'] = 1
