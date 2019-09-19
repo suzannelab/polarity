@@ -119,7 +119,7 @@ def apoptosis(sheet, manager, **kwargs):
                  apoptosis_spec["shrink_rate"],
                  col="prefered_area",
                  divide=True,
-                 bound=apoptosis_spec["critical_area"] / 2,
+                 bound=apoptosis_spec["critical_area"],
                  )
 
         increase_linear_tension(
@@ -177,7 +177,8 @@ def _neighbor_contractile_increase(neighbor, dt, apoptosis_spec, sheet):
     specs = sheet.settings['contraction_lt_kwargs'].copy()
 
     increase = (
-        -(apoptosis_spec['shrink_rate'] - apoptosis_spec['basal_shrink_rate']) / apoptosis_spec["contract_span"]
+        -(apoptosis_spec['shrink_rate'] - apoptosis_spec['basal_shrink_rate']
+          ) / apoptosis_spec["contract_span"]
     ) * neighbor["order"] + apoptosis_spec['shrink_rate']
 
     specs.update({
@@ -208,33 +209,22 @@ def contraction_line_tension_stress_dependant(sheet, manager, **kwargs):
     contraction_spec.update(**kwargs)
     face = contraction_spec["face"]
 
-    """if sheet.face_df.loc[face, 'apoptosis'] > 0:
-                    return"""
+    if sheet.face_df.loc[face, "prefered_area"] > contraction_spec['critical_area']:
 
-    #if sheet.face_df.loc[face, "prefered_area"] > contraction_spec['critical_area']:
-
-    decrease(sheet,
-             'face',
-             face,
-             contraction_spec["shrink_rate"],
-             col="prefered_area",
-             divide=True,
-             bound=contraction_spec['critical_area'],
-             )
-
-    """increase_linear_tension(
-            sheet,
-            face,
-            1.08, #contraction_spec['contract_rate'] * dt,
-            multiple=True,
-            isotropic=True,
-            limit=100)"""
+        decrease(sheet,
+                 'face',
+                 face,
+                 contraction_spec["shrink_rate"],
+                 col="prefered_area",
+                 divide=True,
+                 bound=contraction_spec['critical_area'],
+                 )
 
     increase_linear_tension_stress(
-                    sheet,
-                    face,
-                    contraction_spec["model"],
-                    limit=100)
+        sheet,
+        face,
+        contraction_spec["model"],
+        limit=100)
 
 
 def increase_linear_tension_stress(sheet,
