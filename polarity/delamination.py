@@ -4,6 +4,7 @@ from tyssue.geometry.sheet_geometry import SheetGeometry
 from tyssue.behaviors.sheet.actions import (exchange,
                                             remove,
                                             decrease,
+                                            increase,
                                             increase_linear_tension,
                                             set_value)
 
@@ -71,7 +72,7 @@ def delamination(sheet, manager, **kwargs):
             sheet,
             face,
             contract_rate,
-            multiple=True,
+            multiply=True,
             isotropic=True,
             limit=100)
         # reduce prefered_area
@@ -83,6 +84,15 @@ def delamination(sheet, manager, **kwargs):
                  divide=True,
                  bound=constriction_spec["critical_area"],
                  )
+        for e in sheet.edge_df[sheet.edge_df.face == face].index.values:
+            decrease(sheet,
+                     'edge',
+                     e,
+                     2.,
+                     col="prefered_length",
+                     divide=True,
+                     bound=0.01)
+
 
     neighbors = sheet.get_neighborhood(
         face, constriction_spec["contract_span"]
@@ -199,6 +209,15 @@ def increase_linear_tension_stress(sheet,
                   20 + k_0 /
                   (1 + np.exp(-chi * (stresses_edges[edge.name] - 40))),
                   "line_tension")
+        """increase(
+            sheet,
+            "edge",
+            edge.name,
+            10 /
+            (1 + np.exp(-chi * (stresses_edges[edge.name]))) - 5,
+            "line_tension",
+            multiply=False
+        )"""
 
 
 def edge_projected_stress(sheet, model):

@@ -126,9 +126,18 @@ def apoptosis(sheet, manager, **kwargs):
             sheet,
             face,
             apoptosis_spec['contract_rate'] * dt,
-            multiple=True,
+            multiply=True,
             isotropic=True,
             limit=100)
+
+        for e in sheet.edge_df[sheet.edge_df.face == face].index.values:
+            decrease(sheet,
+                     'edge',
+                     e,
+                     2.,
+                     col="prefered_length",
+                     divide=True,
+                     bound=0.01)
 
     # contract neighbors
     neighbors = sheet.get_neighborhood(
@@ -208,6 +217,8 @@ def contraction_line_tension_stress_dependant(sheet, manager, **kwargs):
     contraction_spec = default_contraction_line_tension_spec
     contraction_spec.update(**kwargs)
     face = contraction_spec["face"]
+    if sheet.face_df.loc[face].apoptosis == 1:
+        return
 
     if sheet.face_df.loc[face, "prefered_area"] > contraction_spec['critical_area']:
 
@@ -238,12 +249,22 @@ def increase_linear_tension_stress(sheet,
     for index, edge in edges.iterrows():
         k_0 = 80
         chi = 0.2
-        set_value(sheet,
+        """set_value(sheet,
                   'edge',
                   edge.name,
                   20 + k_0 /
                   (1 + np.exp(-chi * (stresses_edges[edge.name] - 40))),
-                  "line_tension")
+                  "line_tension")"""
+
+        decrease(sheet,
+                 'edge',
+                 edge.name,
+                 2,
+                 col='prefered_length',
+                 divide=True,
+                 bound=0.1)
+
+
 
 
 def edge_projected_stress(sheet, model):
