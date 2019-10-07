@@ -109,7 +109,7 @@ def delamination(sheet, manager, **kwargs):
         ]
     )
 
-    if face_area < constriction_spec["critical_area"]:
+    if face_area < 20:
         if current_traction < constriction_spec["max_traction"]:
             # AB pull
             set_value(sheet,
@@ -117,7 +117,11 @@ def delamination(sheet, manager, **kwargs):
                       face,
                       constriction_spec['radial_tension'],
                       col="radial_tension")
-            current_traction = current_traction + 1
+            set_value(sheet,
+                      'face',
+                      face,
+                      current_traction,
+                      col="current_traction")
             constriction_spec.update({"current_traction": current_traction})
 
     if constriction_spec["face_id"] in (sheet.face_df.id):
