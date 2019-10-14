@@ -17,11 +17,11 @@ default_constriction_spec = {
     "radial_tension": 1.0,
     "contract_neighbors": True,
     "critical_area_neighbors": 10,
+    "critical_area_pulling": 10,
     "contract_span": 2,
     "basal_contract_rate": 1.001,
     "current_traction": 0,
     "max_traction": 30,
-    "contraction_column": "contractility",
 }
 
 
@@ -62,54 +62,44 @@ def delamination(sheet, manager, **kwargs):
     # initialiser une variable face
     # aller chercher la valeur dans le dictionnaire à chaque fois ?
     face = constriction_spec["face"]
-    contract_rate = constriction_spec["contract_rate"]
     current_traction = constriction_spec["current_traction"]
 
     face_area = sheet.face_df.loc[face, "area"]
 
     if face_area > constriction_spec["critical_area"]:
-        increase_linear_tension(
-            sheet,
-            face,
-            contract_rate,
-            multiply=True,
-            isotropic=True,
-            limit=100)
         # reduce prefered_area
         decrease(sheet,
                  'face',
                  face,
-                 constriction_spec["shrink_rate"],
+                 constriction_spec["contract_rate"],
                  col="prefered_area",
                  divide=True,
                  bound=constriction_spec["critical_area"],
                  )
-        for e in sheet.edge_df[sheet.edge_df.face == face].index.values:
-            decrease(sheet,
-                     'edge',
-                     e,
-                     2.,
-                     col="prefered_length",
-                     divide=True,
-                     bound=0.01)
+        decrease(sheet,
+                 'face',
+                 face,
+                 np.sqrt(constriction_spec["contract_rate"]),
+                 col="prefered_perimeter",
+                 divide=True,
+                 )
 
+        neighbors = sheet.get_neighborhood(
+            face, constriction_spec["contract_span"]
+        ).dropna()
 
-    neighbors = sheet.get_neighborhood(
-        face, constriction_spec["contract_span"]
-    ).dropna()
+        manager.extend(
+            [
+                (
+                    contraction_line_tension,
+                    _neighbor_contractile_increase_delamination(
+                        neighbor, 1, constriction_spec, sheet),
+                )
+                for _, neighbor in neighbors.iterrows()
+            ]
+        )
 
-    manager.extend(
-        [
-            (
-                contraction_line_tension,
-                _neighbor_contractile_increase_delamination(
-                    neighbor, 1, constriction_spec, sheet),
-            )
-            for _, neighbor in neighbors.iterrows()
-        ]
-    )
-
-    if face_area < 20:
+    if face_area < constriction_spec["critical_area_pulling"]:
         if current_traction < constriction_spec["max_traction"]:
             # AB pull
             set_value(sheet,
@@ -124,6 +114,9 @@ def delamination(sheet, manager, **kwargs):
                       col="current_traction")
             constriction_spec.update({"current_traction": current_traction})
 
+        if (current_traction > 10) and (sheet.face_df.loc[face, "num_sides"] > 3):
+            exchange(sheet, face, constriction_spec["geom"])
+
     if constriction_spec["face_id"] in (sheet.face_df.id):
         manager.append(delamination, **constriction_spec)
 
@@ -135,16 +128,14 @@ def _neighbor_contractile_increase_delamination(neighbor, dt, constriction_spec,
     contract = specs["contract_rate"]
     basal_contract = specs["basal_contract_rate"]
 
-    increase = (
+    increase_ = (
         -(contract - basal_contract) / constriction_spec["contract_span"]
     ) * neighbor["order"] + contract
 
     specs.update({
         "face_id": neighbor.face,
-        "contractile_increase": increase,
+        "contractile_increase": increase_,
         "critical_area": constriction_spec["critical_area"],
-        "max_contractility": 100,
-        "contraction_column": constriction_spec["contraction_column"],
         "multiple": True,
         "unique": False,
     })
@@ -155,9 +146,8 @@ def _neighbor_contractile_increase_delamination(neighbor, dt, constriction_spec,
 default_contraction_line_tension_spec = {
     "face_id": -1,
     "face": -1,
-    "shrink_rate": 1.05,
+    "contract_rate": 1.05,
     "critical_area": 5.,
-    "contraction_column": "line_tension",
     "model": None,
 }
 
@@ -176,62 +166,16 @@ def contraction_line_tension(sheet, manager, **kwargs):
         decrease(sheet,
                  'face',
                  face,
-                 contraction_spec["shrink_rate"],
+                 contraction_spec["contract_rate"],
                  col="prefered_area",
                  divide=True,
                  bound=contraction_spec["critical_area"],
                  )
-
-    """increase_linear_tension(
-                    sheet,
-                    face,
-                    contraction_spec["contractile_increase"],
-                    multiple=contraction_spec["multiple"],
-                    isotropic=True,
-                    limit=100)"""
-    increase_linear_tension_stress(
-        sheet,
-        face,
-        contraction_spec["model"],
-        limit=100)
-
-
-def increase_linear_tension_stress(sheet,
-                                   face,
-                                   model,
-                                   limit=100):
-
-    stresses_edges = edge_projected_stress(sheet, model)
-    edges = sheet.edge_df[sheet.edge_df["face"] == face]
-
-    for index, edge in edges.iterrows():
-        k_0 = 80
-        chi = 0.2
-        set_value(sheet,
-                  'edge',
-                  edge.name,
-                  20 + k_0 /
-                  (1 + np.exp(-chi * (stresses_edges[edge.name] - 40))),
-                  "line_tension")
-        """increase(
-            sheet,
-            "edge",
-            edge.name,
-            10 /
-            (1 + np.exp(-chi * (stresses_edges[edge.name]))) - 5,
-            "line_tension",
-            multiply=False
-        )"""
-
-
-def edge_projected_stress(sheet, model):
-
-    force = -model.compute_gradient(sheet)
-    srce_force = sheet.upcast_srce(force)
-    trgt_force = sheet.upcast_trgt(force)
-    stress = (
-        (srce_force - trgt_force)
-        * sheet.edge_df[['u' + c for c in sheet.coords]].values
-    ).sum(axis=1)
-
-    return stress
+        decrease(sheet,
+                 'face',
+                 face,
+                 np.sqrt(contraction_spec["contract_rate"]),
+                 col="prefered_perimeter",
+                 divide=True,
+                 bound=1,
+                 )

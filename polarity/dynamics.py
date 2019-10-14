@@ -16,6 +16,25 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
         cls.center(eptm)
         # cls.update_height(eptm)
         cls.update_height2(eptm)
+        cls.update_perimeters(eptm)
+
+    @staticmethod
+    def update_perimeters(eptm):
+        """
+        Updates the perimeter of each face.
+        """
+        eptm.edge_df['weighted_length'] = eptm.edge_df.weighted * eptm.edge_df.length
+        eptm.face_df["perimeter"] = eptm.sum_face(eptm.edge_df["weighted_length"])
+        #/eptm.sum_face(eptm.edge_df['weighted'])*eptm.sum_face(eptm.edge_df['is_valid'])
+
+    @staticmethod
+    def normalize_weights(sheet):
+        sheet.edge_df["num_sides"] = sheet.upcast_face('num_sides')
+        sheet.edge_df["weighted"] = sheet.edge_df.groupby('face').apply(
+            lambda df: (df["num_sides"] * df["weighted"]
+                        / df["weighted"].sum())
+        ).sort_index(level='edge').to_numpy()
+
 
     @staticmethod
     def update_height2(eptm):

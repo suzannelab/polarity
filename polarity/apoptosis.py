@@ -64,8 +64,8 @@ def apoptosis_patterning(sheet, manager, **kwargs):
 default_apoptosis_spec = {
     "face_id": -1,
     "face": -1,
-    "shrink_rate": 1.1,
     "critical_area": 1e-2,
+    "critical_area_pulling": 10,
     "radial_tension": 0.1,
     "contract_rate": 0.1,
     "basal_contract_rate": 1.001,
@@ -107,6 +107,7 @@ def apoptosis(sheet, manager, **kwargs):
     dt = sheet.settings.get('dt', 1.0)
     # Small variable name for some spec
     face = apoptosis_spec["face"]
+    # reutiliser cette ligne après verification du manager
     #current_traction = apoptosis_spec["current_traction"]
     current_traction = sheet.face_df.loc[face, "current_traction"]
     face_area = sheet.face_df.loc[face, "area"]
@@ -116,45 +117,35 @@ def apoptosis(sheet, manager, **kwargs):
         decrease(sheet,
                  'face',
                  face,
-                 apoptosis_spec["shrink_rate"],
+                 apoptosis_spec["contract_rate"],
                  col="prefered_area",
                  divide=True,
                  bound=apoptosis_spec["critical_area"],
                  )
 
-        increase_linear_tension(
-            sheet,
-            face,
-            apoptosis_spec['contract_rate'] * dt,
-            multiply=True,
-            isotropic=True,
-            limit=100)
+        decrease(sheet,
+                 'face',
+                 face,
+                 np.sqrt(apoptosis_spec["contract_rate"]),
+                 col="prefered_perimeter",
+                 divide=True,
+                 )
 
-        for e in sheet.edge_df[sheet.edge_df.face == face].index.values:
-            decrease(sheet,
-                     'edge',
-                     e,
-                     2.,
-                     col="prefered_length",
-                     divide=True,
-                     bound=0.01)
+        # contract neighbors
+        neighbors = sheet.get_neighborhood(
+            face, apoptosis_spec["contract_span"]
+        ).dropna()
+        manager.extend(
+            [
+                (
+                    neighbor_contraction,
+                    _neighbor_contractile_increase(
+                        neighbor, dt, apoptosis_spec, sheet),
+                )
+                for _, neighbor in neighbors.iterrows()
+            ])
 
-    # contract neighbors
-    neighbors = sheet.get_neighborhood(
-        face, apoptosis_spec["contract_span"]
-    ).dropna()
-    #neighbors["id"] = sheet.face_df.loc[neighbors.face, "id"].values
-    manager.extend(
-        [
-            (
-                contraction_line_tension_stress_dependant,
-                _neighbor_contractile_increase(
-                    neighbor, dt, apoptosis_spec, sheet),
-            )
-            for _, neighbor in neighbors.iterrows()
-        ])
-
-    if face_area < apoptosis_spec["critical_area"]:
+    if face_area < apoptosis_spec["critical_area_pulling"]:
         if current_traction < apoptosis_spec["max_traction"]:
             # AB pull
             set_value(sheet,
@@ -162,6 +153,7 @@ def apoptosis(sheet, manager, **kwargs):
                       face,
                       apoptosis_spec['radial_tension'],
                       col="radial_tension")
+            # Verifier que le manager fonctionne avant de supprimer
             current_traction = current_traction + dt
             set_value(sheet,
                       'face',
@@ -186,14 +178,13 @@ def _neighbor_contractile_increase(neighbor, dt, apoptosis_spec, sheet):
     specs = sheet.settings['contraction_lt_kwargs'].copy()
 
     increase = (
-        -(apoptosis_spec['shrink_rate'] - apoptosis_spec['basal_shrink_rate']
+        -(apoptosis_spec['contract_rate'] - apoptosis_spec['basal_contract_rate']
           ) / apoptosis_spec["contract_span"]
-    ) * neighbor["order"] + apoptosis_spec['shrink_rate']
+    ) * neighbor["order"] + apoptosis_spec['contract_rate']
 
     specs.update({
         "face_id": neighbor.face,
-        "shrink_rate": increase,
-        #(apoptosis_spec['shrink_rate'] - 1) / 2 + 1,
+        "contract_rate": increase,
         "unique": False
     })
     return specs
@@ -202,15 +193,14 @@ def _neighbor_contractile_increase(neighbor, dt, apoptosis_spec, sheet):
 default_contraction_line_tension_spec = {
     "face_id": -1,
     "face": -1,
-    "shrink_rate": 1.05,
+    "contract_rate": 1.05,
     "critical_area": 5.,
-    "contraction_column": "line_tension",
     "model": None,
 }
 
 
 @face_lookup
-def contraction_line_tension_stress_dependant(sheet, manager, **kwargs):
+def neighbor_contraction(sheet, manager, **kwargs):
     """
     Single step contraction event
     """
@@ -225,56 +215,17 @@ def contraction_line_tension_stress_dependant(sheet, manager, **kwargs):
         decrease(sheet,
                  'face',
                  face,
-                 contraction_spec["shrink_rate"],
+                 contraction_spec["contract_rate"],
                  col="prefered_area",
                  divide=True,
                  bound=contraction_spec['critical_area'],
                  )
-
-    increase_linear_tension_stress(
-        sheet,
-        face,
-        contraction_spec["model"],
-        limit=100)
-
-
-def increase_linear_tension_stress(sheet,
-                                   face,
-                                   model,
-                                   limit=100):
-
-    stresses_edges = edge_projected_stress(sheet, model)
-    edges = sheet.edge_df[sheet.edge_df["face"] == face]
-
-    for index, edge in edges.iterrows():
-        k_0 = 80
-        chi = 0.2
-        """set_value(sheet,
-                  'edge',
-                  edge.name,
-                  20 + k_0 /
-                  (1 + np.exp(-chi * (stresses_edges[edge.name] - 40))),
-                  "line_tension")"""
-
         decrease(sheet,
-                 'edge',
-                 edge.name,
-                 2,
-                 col='prefered_length',
+                 'face',
+                 face,
+                 np.sqrt(contraction_spec["contract_rate"]),
+                 col="prefered_perimeter",
                  divide=True,
-                 bound=0.1)
+                 bound=1,
+                 )
 
-
-
-
-def edge_projected_stress(sheet, model):
-
-    force = -model.compute_gradient(sheet)
-    srce_force = sheet.upcast_srce(force)
-    trgt_force = sheet.upcast_trgt(force)
-    stress = (
-        (srce_force - trgt_force)
-        * sheet.edge_df[['u' + c for c in sheet.coords]].values
-    ).sum(axis=1)
-
-    return stress
