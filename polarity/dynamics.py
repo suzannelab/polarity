@@ -23,8 +23,10 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
         """
         Updates the perimeter of each face.
         """
-        eptm.edge_df['weighted_length'] = eptm.edge_df.weighted * eptm.edge_df.length
-        eptm.face_df["perimeter"] = eptm.sum_face(eptm.edge_df["weighted_length"])
+        eptm.edge_df['weighted_length'] = eptm.edge_df.weighted * \
+            eptm.edge_df.length
+        eptm.face_df["perimeter"] = eptm.sum_face(
+            eptm.edge_df["weighted_length"])
         #/eptm.sum_face(eptm.edge_df['weighted'])*eptm.sum_face(eptm.edge_df['is_valid'])
 
     @staticmethod
@@ -34,7 +36,6 @@ class EllipsoidLameGeometry(ClosedSheetGeometry):
             lambda df: (df["num_sides"] * df["weighted"]
                         / df["weighted"].sum())
         ).sort_index(level='edge').to_numpy()
-
 
     @staticmethod
     def update_height2(eptm):
@@ -139,3 +140,79 @@ model = model_factory(
         effectors.FaceAreaElasticity,
         effectors.LumenVolumeElasticity,
     ], effectors.FaceAreaElasticity)
+
+
+class PerimeterElasticity(effectors.AbstractEffector):
+
+    dimensions = units.line_elasticity
+    magnitude = 'perimeter_elasticity'
+    label = 'Perimeter Elasticity'
+    element = 'face'
+    specs = {
+        'face': {
+            'is_alive': 1,
+            'perimeter': 1.0,
+            'perimeter_elasticity': 1.0,
+            'prefered_perimeter': 1.0
+        }
+    }
+
+    spatial_ref = 'prefered_perimeter', units.length
+
+    @staticmethod
+    def energy(eptm):
+        return eptm.face_df.eval('0.5 * is_alive'
+                                 '* perimeter_elasticity'
+                                 '* (perimeter - prefered_perimeter)** 2')
+
+    @staticmethod
+    def gradient(eptm):
+
+        gamma_ = eptm.face_df.eval(
+            'perimeter_elasticity * is_alive'
+            '*  (perimeter - prefered_perimeter)')
+        gamma = eptm.edge_df['weighted'] * eptm.upcast_face(gamma_)
+
+        grad_srce = - eptm.edge_df[eptm.ucoords] * to_nd(gamma,
+                                                         len(eptm.coords))
+        grad_srce.columns = ['g' + u for u in eptm.coords]
+        grad_trgt = - grad_srce
+        return grad_srce, grad_trgt
+
+
+class RatioElasticity(effectors.AbstractEffector):
+    dimensions = units.line_elasticity
+    magnitude = 'ratio_elasticity'
+    label = 'Ratio Elasticity'
+    element = 'face'
+    specs = {
+        'face': {
+            'is_alive': 1,
+            'perimeter': 1.0,
+            'area': 1.0,
+            'ratio_elasticity': 1.,
+            'prefered_ratio': 3.81
+        }
+    }
+
+    spatial_ref = 'prefered_ratio', units.length
+
+    @staticmethod
+    def energy(eptm):
+        return eptm.face_df.eval('0.5 * is_alive'
+                                 '*ratio_elasticity'
+                                 '*(perimeter/(area**(1/2))-prefered_ratio)**2')
+
+    @staticmethod
+    def gradient(eptm):
+        gamma_ = eptm.face_df.eval(
+            'ratio_elasticity * is_alive'
+            ' * (perimeter/(area**(1/2))-prefered_ratio)')
+        gamma = eptm.edge_df['weighted'] * eptm.upcast_face(gamma_)
+
+        grad_srce = -eptm.edge_df[eptm.ucoords] * \
+            to_nd(gamma, len(eptm.coords))
+        grad_srce.columns = ['g' + u for u in eptm.coords]
+        grad_trgt = -grad_srce
+
+        return grad_srce, grad_trgt
