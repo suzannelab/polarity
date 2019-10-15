@@ -90,8 +90,84 @@ def apoptosis_dorsal(sheet, code_fold=1):
             sheet.face_df.loc[i.Index, "apoptosis"] = 1
 
 
-def  predefined_apoptotic_cell(sheet):
-    list_apopto = [0,1,2,3]
+def predefined_apoptotic_cell(sheet):
+    list_apopto = [0, 1, 2, 3]
 
     for i in list_apopto:
         sheet.face_df.loc[i, 'apoptosis'] = 1
+
+
+def decrease_polarity_lateral(sheet, face, parallel_weighted, perpendicular_weighted):
+    edges = sheet.edge_df[sheet.edge_df["face"] == face]
+    for index, edge in edges.iterrows():
+        angle_ = np.arctan2(
+            sheet.edge_df.loc[edge.name, "dx"], sheet.edge_df.loc[
+                edge.name, "dz"]
+        )
+        if (((np.abs(angle_) < np.pi / 6) and (np.abs(angle_) > -np.pi / 6)) or
+                ((np.abs(angle_) > -np.pi / 6) and (np.abs(angle_) < np.pi / 6)) or
+            ((np.abs(angle_) > 5 * np.pi / 6) and (np.abs(angle_) < 7 * np.pi / 6)) or
+                ((np.abs(angle_) < -7 * np.pi / 6) and (np.abs(angle_) > -5 * np.pi / 6))):
+
+            sheet.edge_df.loc[edge.name, "weighted"] = perpendicular_weighted
+        else:
+            sheet.edge_df.loc[edge.name, "weighted"] = parallel_weighted
+
+
+def decrease_polarity_dv(sheet, face, parallel_weighted, perpendicular_weighted):
+    edges = sheet.edge_df[sheet.edge_df["face"] == face]
+    for index, edge in edges.iterrows():
+        angle_ = np.arctan2(
+            sheet.edge_df.loc[edge.name, "dy"], sheet.edge_df.loc[
+                edge.name, "dz"]
+        )
+        if (((np.abs(angle_) < np.pi / 6) and (np.abs(angle_) > -np.pi / 6)) or
+                ((np.abs(angle_) > -np.pi / 6) and (np.abs(angle_) < np.pi / 6)) or
+            ((np.abs(angle_) > 5 * np.pi / 6) and (np.abs(angle_) < 7 * np.pi / 6)) or
+                ((np.abs(angle_) < -7 * np.pi / 6) and (np.abs(angle_) > -5 * np.pi / 6))):
+            sheet.edge_df.loc[edge.name, "weighted"] = perpendicular_weighted
+        else:
+            sheet.edge_df.loc[edge.name, "weighted"] = parallel_weighted
+
+
+def define_polarity(sheet, parallel_weighted, perpendicular_weighted):
+    sheet.edge_df['id_'] = sheet.edge_df.index
+
+    sheet2 = sheet.extract_bounding_box(y_boundary=(30, 150))
+    [decrease_polarity_lateral(
+        sheet2, i, parallel_weighted, perpendicular_weighted) for i in range(sheet2.Nf)]
+    for i in (sheet2.edge_df.index):
+        sheet.edge_df.loc[sheet.edge_df[sheet.edge_df.id_ == sheet2.edge_df.loc[
+            i, 'id_']].index, 'weighted'] = sheet2.edge_df.loc[i, 'weighted']
+
+    sheet2 = sheet.extract_bounding_box(y_boundary=(-150, -30))
+    [decrease_polarity_lateral(
+        sheet2, i, parallel_weighted, perpendicular_weighted) for i in range(sheet2.Nf)]
+    for i in (sheet2.edge_df.index):
+        sheet.edge_df.loc[sheet.edge_df[sheet.edge_df.id_ == sheet2.edge_df.loc[
+            i, 'id_']].index, 'weighted'] = sheet2.edge_df.loc[i, 'weighted']
+
+    sheet2 = sheet.extract_bounding_box(x_boundary=(-150, -30))
+    [decrease_polarity_dv(
+        sheet2, i, parallel_weighted, perpendicular_weighted) for i in range(sheet2.Nf)]
+    for i in (sheet2.edge_df.index):
+        sheet.edge_df.loc[sheet.edge_df[sheet.edge_df.id_ == sheet2.edge_df.loc[
+            i, 'id_']].index, 'weighted'] = sheet2.edge_df.loc[i, 'weighted']
+
+    sheet2 = sheet.extract_bounding_box(x_boundary=(30, 150))
+    [decrease_polarity_dv(
+        sheet2, i, parallel_weighted, perpendicular_weighted) for i in range(sheet2.Nf)]
+    for i in (sheet2.edge_df.index):
+        sheet.edge_df.loc[sheet.edge_df[sheet.edge_df.id_ == sheet2.edge_df.loc[
+            i, 'id_']].index, 'weighted'] = sheet2.edge_df.loc[i, 'weighted']
+
+    # Pour une cellule apoptotic, toutes les jonctions ont le même poids
+    if 'apoptosis' in sheet.face_df.columns:
+        for f in sheet.face_df[sheet.face_df.apoptosis == 1].index:
+            for e in sheet.edge_df[sheet.edge_df.face == f].index:
+                sheet.edge_df.loc[e, 'weighted'] = 1.
+
+    if 'is_mesoderm' in sheet.face_df.columns:
+        for f in sheet.face_df[sheet.face_df.is_mesoderm == 1].index:
+            for e in sheet.edge_df[sheet.edge_df.face == f].index:
+                sheet.edge_df.loc[e, 'weighted'] = 1.
