@@ -1,10 +1,12 @@
 import json
 import random
+import os
 
 import numpy as np
 
 from tyssue import Sheet
 from tyssue.io import hdf5
+from tyssue import config
 
 
 def init(hf5_filename='superegg_final.hf5',
@@ -130,7 +132,7 @@ def decrease_polarity_dv(sheet, face, parallel_weighted, perpendicular_weighted)
             sheet.edge_df.loc[edge.name, "weighted"] = parallel_weighted
 
 
-def define_polarity(sheet, parallel_weighted, perpendicular_weighted):
+def define_polarity_old(sheet, parallel_weighted, perpendicular_weighted):
     sheet.edge_df['id_'] = sheet.edge_df.index
 
     sheet2 = sheet.extract_bounding_box(y_boundary=(30, 150))
@@ -171,3 +173,81 @@ def define_polarity(sheet, parallel_weighted, perpendicular_weighted):
         for f in sheet.face_df[sheet.face_df.is_mesoderm == 1].index:
             for e in sheet.edge_df[sheet.edge_df.face == f].index:
                 sheet.edge_df.loc[e, 'weighted'] = 1.
+
+
+def define_polarity(sheet, parallel_weighted, perpendicular_weighted):
+    # Angle θ of the source in the cylindrical coordinate system
+    theta = np.arctan2(sheet.edge_df["sy"], sheet.edge_df["sx"],)
+    cost, sint = np.cos(-theta), np.sin(-theta)
+
+    # One rotation matrix per edge
+    rot_mat = np.array(
+        [[cost, sint],
+         [-sint, cost]]
+    )
+    #print('Shape of rotation matrices', rot_mat.shape)
+
+    # We want to get the edge coordinates w/r to θ
+    dx_dy = sheet.edge_df[['dx', 'dy']].to_numpy()
+    sheet.edge_df['dx_r'] = sheet.edge_df['dx'].copy()
+    sheet.edge_df['dy_r'] = sheet.edge_df['dy'].copy()
+
+    # numpy einsum magic (need lots of trial and error :/)
+    sheet.edge_df[['dx_r', 'dy_r']] = np.einsum('jik, ki-> kj', rot_mat, dx_dy)
+
+    # φ is the angle we want
+    sheet.edge_df["phi"] = np.arctan2(
+        sheet.edge_df['dz'], sheet.edge_df['dy_r'])
+
+    for index in sheet.edge_df.index:
+        if (sheet.edge_df.loc[index, 'phi'] > np.pi / 3) and (sheet.edge_df.loc[index, 'phi'] < 2 * np.pi / 3):
+            sheet.edge_df.loc[index, "weighted"] = perpendicular_weighted
+        else:
+            sheet.edge_df.loc[index, "weighted"] = parallel_weighted
+
+
+def open_sheet(dirname, t=0, file_name = None, data_names=['vert', 'edge', 'face', 'cell']):
+    """Open hdf5 file
+
+    Open HDF5 file correspond to t time from dirname directory.
+
+    Parameters
+    ----------
+    directory : str
+        complete directory path
+    t : int
+        time step
+    """
+    if file_name is None:
+        file_name = 'invagination_{:04d}.hf5'.format(t)
+    dsets = hdf5.load_datasets(os.path.join(dirname, file_name),
+                               data_names=data_names)
+
+    specs = config.geometry.cylindrical_sheet()
+    sheet = Sheet('ellipse', dsets, specs)
+    return sheet
+
+
+def depth_calculation(sheet, zmin_, zmax_):
+
+    sheet_fold = sheet.extract_bounding_box(z_boundary=(zmin_, zmax_))
+
+    r = np.mean(np.sqrt(sheet_fold.face_df.x**2 + sheet_fold.face_df.y**2))
+
+    return r
+
+
+def all_depth_calculation(directory, zmin_=-7, zmax_=7):
+    sheet_init = open_sheet(directory, 0)
+    depth_init = depth_calculation(sheet_init, zmin_, zmax_)
+
+    depths = []
+    for t in range(0, 200):
+        try:
+            sheet = open_sheet(directory, t)
+            depths.append(depth_calculation(sheet, zmin_, zmax_) / depth_init)
+
+        except Exception:
+            pass
+
+    return depths

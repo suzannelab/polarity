@@ -21,41 +21,46 @@ __all__ = [
     'parse_ply',
     'get_borders',
     'get_morphometry',
-    ]
+]
 
 
 labels = {'ar': 'Aspect ratio',
           'area': 'Area (µm²)',
           'orient': 'Orientation (degrees)',
-          'tilt' : 'Angle w/r to LR axis (radians)',
+          'tilt': 'Angle w/r to LR axis (radians)',
           'x': 'Left/right axis (µm)',
           'y': 'Anterior/posterior axis (µm)',
-          'z': 'Ventral/dorsal axis (µm)',}
+          'z': 'Ventral/dorsal axis (µm)', }
 
 ranges = {'ar': (1., 3.),
           'orient': (0., 90),
           'area': (20, 100)}
 
 
-def analyse(data_dir, fname, basename='',
+def analyse(data_dir=None, fname=None, sheet=None, basename='',
             save=True, plot=True, show=False,
             figures=None, axes=None):
 
-    if fname.endswith('ply'):
-        with open(data_dir/fname, 'r+') as fh:
-            datasets = parse_ply(fh, read_faces=True)
-        borders = get_borders(datasets)
-        data_container = datasets
-
-    elif fname.endswith('hf5'):
-        sheet = get_ventral_patch(data_dir/fname)
+    if (data_dir == None) and (fname == None):
         borders = sheet.upcast_srce(sheet.vert_df[sheet.coords])
         borders['label'] = sheet.edge_df['face']
         data_container = sheet
+    else:
+        if fname.endswith('ply'):
+            with open(data_dir / fname, 'r+') as fh:
+                datasets = parse_ply(fh, read_faces=True)
+            borders = get_borders(datasets)
+            data_container = datasets
+
+        elif fname.endswith('hf5'):
+            sheet = get_ventral_patch(data_dir / fname)
+            borders = sheet.upcast_srce(sheet.vert_df[sheet.coords])
+            borders['label'] = sheet.edge_df['face']
+            data_container = sheet
 
     centers = get_morphometry(borders)
     centers.to_csv(f'morphometry_{basename}.csv')
-    coords = ['x', 'y']
+    coords = ['z', 'y']
     if not plot:
         return centers
 
@@ -70,7 +75,8 @@ def analyse(data_dir, fname, basename='',
             col, coords, fig, ax)
         axes[col][1].set_title(basename)
         if save:
-            figures[col].savefig(f'{basename}_{col}.png', dpi=300)
+            figures[col].savefig(f'{basename}_{col}.png', dpi=300, transparent=True)
+            figures[col].savefig(f'{basename}_{col}.eps', dpi=300, transparent=True)
         if not show:
             plt.close("all")
 
@@ -121,13 +127,13 @@ def parse_ply(fh, read_faces=False):
     columns_v = ['x', 'y', 'z', 'label', 'signal']
     dtypes_v = [float, float, float, int, float]
     columns_f = ['nv', 'v0', 'v1', 'v2', 'label']
-    dtypes_f = [int,]*len(columns_f)
+    dtypes_f = [int, ] * len(columns_f)
     header_length = 0
     for line in fh:
         header_length += 1
         if line.startswith('element vertex'):
             num_v = int(line.split(' ')[-1])
-        elif line.startswith('element face') :
+        elif line.startswith('element face'):
             num_f = int(line.split(' ')[-1])
         elif line.startswith('end_header'):
             break
@@ -147,7 +153,7 @@ def parse_ply(fh, read_faces=False):
     fh.seek(0)
     face_df = pd.read_csv(fh, sep=' ',
                           nrows=num_f,
-                          skiprows=header_length+num_v,
+                          skiprows=header_length + num_v,
                           header=None,
                           names=columns_f, dtype=int)
     face_df.index.name = 'face'
@@ -164,7 +170,7 @@ def get_borders(datasets):
 
     borders = datasets['face'].groupby('label').apply(
         _border_verts).reset_index()[['label', 'vert']]
-    ## remove membrane and background
+    # remove membrane and background
     borders = borders[borders["label"] > 0].drop_duplicates()
     for c in ['x', 'y', 'z']:
         borders[c] = datasets['vert'].loc[borders['vert'].values, c].values
@@ -176,13 +182,13 @@ def get_morphometry(borders):
 
     centers = borders.groupby('label')[['x', 'y', 'z']].mean()
     centers.index = centers.index.astype(np.int)
-    centers.index.name='label'
+    centers.index.name = 'label'
 
     aniso = borders.groupby('label').apply(_get_anisotropies)
     aniso.index = aniso.index.astype(np.int)
     aniso.index.name = 'label'
     centers = pd.concat([centers, aniso], axis=1)
-    centers['orient'] = (np.pi/2 - centers['tilt'])*180/np.pi
+    centers['orient'] = (np.pi / 2 - centers['tilt']) * 180 / np.pi
 
     return centers
 
@@ -191,7 +197,7 @@ def _poly_area(relative_pos):
     rolled = np.roll(relative_pos, 1, axis=0)
 
     return (relative_pos[:, 1] * rolled[:, 0]
-            - relative_pos[:, 0]* rolled[:, 1]).sum()/2
+            - relative_pos[:, 0] * rolled[:, 1]).sum() / 2
 
 
 def _get_anisotropies(verts, coords=['x', 'y', 'z']):
@@ -201,8 +207,8 @@ def _get_anisotropies(verts, coords=['x', 'y', 'z']):
                             full_matrices=False,
                             compute_uv=True)
 
-    tilt = np.abs(atan(v[1, 0]/v[0, 0]))
-    ar = s[0]/s[1]
+    tilt = np.abs(atan(v[1, 0] / v[0, 0]))
+    ar = s[0] / s[1]
     aligned = centered @ v.T
     theta = np.arctan2(aligned[:, 1], aligned[:, 0])
     aligned = aligned[np.argsort(theta)]
@@ -250,7 +256,6 @@ def grided_graph(data_container,
     ax_scatx.xaxis.set_major_formatter(nullfmt)
     ax_scaty.yaxis.set_major_formatter(nullfmt)
 
-
     if isinstance(data_container, Sheet):
         fig, ax_triplot = color_plot_silico(
             sheet=data_container, centers=centers, col=col,
@@ -289,7 +294,7 @@ def grided_graph(data_container,
 
 
 def color_plot_vivo(datasets, centers, col,
-               ax=None, coords=None):
+                    ax=None, coords=None):
     if ax is None:
         fig, ax = plt.subplots()
     else:
@@ -317,14 +322,16 @@ def color_plot_silico(sheet, centers, col,
     else:
         fig = ax.get_figure()
 
-    normed = (centers[col] - ranges[col][0])/(ranges[col][1] - ranges[col][0])
-    face_colors = plt.cm.viridis(normed)
+    normed = (centers[col] - ranges[col][0]) / \
+        (ranges[col][1] - ranges[col][0])
+    face_colors = plt.cm.YlOrBr(normed)
 
     fig, ax = sheet_view(sheet, coords=coords,
                          ax=ax,
-                         face={'visible':True,
+                         face={'visible': True,
                                'color': face_colors},
-                         vert={'visible':False})
+                         vert={'visible': False},
+                         edge={'visible': True})
     ax.grid()
     return fig, ax
 
@@ -334,15 +341,14 @@ In silico analysis
 '''
 
 
-
 def get_ventral_patch(fname):
 
     sim_dsets = hdf5.load_datasets(fname)
     sheet = Sheet('morph', sim_dsets,
                   config.geometry.flat_sheet())
     to_crop = sheet.cut_out([[-300, 300],
-                             [sheet.vert_df.y.max()-22,
-                              sheet.vert_df.y.max()+1],
+                             [sheet.vert_df.y.max() - 22,
+                              sheet.vert_df.y.max() + 1],
                              [-300, 300]],)
 
     sheet.remove(to_crop)

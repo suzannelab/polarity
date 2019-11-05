@@ -22,6 +22,7 @@ default_constriction_spec = {
     "basal_contract_rate": 1.001,
     "current_traction": 0,
     "max_traction": 30,
+    "start_event": 0,
 }
 
 
@@ -99,7 +100,8 @@ def delamination(sheet, manager, **kwargs):
             ]
         )
 
-    if face_area < constriction_spec["critical_area_pulling"]:
+    # if face_area < constriction_spec["critical_area_pulling"]:
+    if constriction_spec['start_event'] >= 15:
         if current_traction < constriction_spec["max_traction"]:
             # AB pull
             set_value(sheet,
@@ -116,6 +118,9 @@ def delamination(sheet, manager, **kwargs):
 
         if (current_traction > 10) and (sheet.face_df.loc[face, "num_sides"] > 3):
             exchange(sheet, face, constriction_spec["geom"])
+
+    constriction_spec.update(
+        {'start_event': constriction_spec['start_event'] + 1})
 
     if constriction_spec["face_id"] in (sheet.face_df.id):
         manager.append(delamination, **constriction_spec)
