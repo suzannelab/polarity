@@ -60,7 +60,7 @@ def analyse(data_dir=None, fname=None, sheet=None, basename='',
 
     centers = get_morphometry(borders)
     centers.to_csv(f'morphometry_{basename}.csv')
-    coords = ['z', 'y']
+    coords = ['z', 'x']
     if not plot:
         return centers
 
