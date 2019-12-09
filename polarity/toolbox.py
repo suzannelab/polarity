@@ -175,7 +175,7 @@ def define_polarity_old(sheet, parallel_weighted, perpendicular_weighted):
                 sheet.edge_df.loc[e, 'weighted'] = 1.
 
 
-def define_polarity(sheet, parallel_weighted, perpendicular_weighted):
+def define_polarity_dont_work(sheet, parallel_weighted, perpendicular_weighted):
     # Angle θ of the source in the cylindrical coordinate system
     theta = np.arctan2(sheet.edge_df["sy"], sheet.edge_df["sx"],)
     cost, sint = np.cos(-theta), np.sin(-theta)
