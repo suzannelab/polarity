@@ -10,13 +10,13 @@ from tyssue.behaviors.sheet.actions import (exchange,
 
 default_pattern = {
     "t": 0.,
-    "dt": 0.1,
+    "dt": 1.,
     "time_of_last_apoptosis": 30
 }
 
 
 def apoptosis_patterning(sheet, manager, **kwargs):
-    """Pattern of face apoptosis entry.
+    """Pattern of cell enter in apoptosis.
 
     Apoptotic cell enter in apoptosis by following a time dependent pattern from
     ventral to dorsal part of the leg tissue.
@@ -35,7 +35,7 @@ def apoptosis_patterning(sheet, manager, **kwargs):
     t = specs['t']
     end = specs["time_of_last_apoptosis"]
 
-    # -t * max(phi)/tfin + max(phi)
+    # -t * max(phi)/t_end + max(phi)
     phi_min = -t * max(np.abs(sheet.face_df.phi)) / \
         end + max(np.abs(sheet.face_df.phi))
 
@@ -107,9 +107,7 @@ def apoptosis(sheet, manager, **kwargs):
     dt = sheet.settings.get('dt', 1.0)
     # Small variable name for some spec
     face = apoptosis_spec["face"]
-    # reutiliser cette ligne après verification du manager
-    #current_traction = apoptosis_spec["current_traction"]
-    current_traction = sheet.face_df.loc[face, "current_traction"]
+    current_traction = apoptosis_spec["current_traction"]
     face_area = sheet.face_df.loc[face, "area"]
 
     if (face_area > apoptosis_spec["critical_area"]):
@@ -153,13 +151,8 @@ def apoptosis(sheet, manager, **kwargs):
                       face,
                       apoptosis_spec['radial_tension'],
                       col="radial_tension")
-            # Verifier que le manager fonctionne avant de supprimer
+
             current_traction = current_traction + dt
-            set_value(sheet,
-                      'face',
-                      face,
-                      current_traction,
-                      col="current_traction")
             apoptosis_spec.update({"current_traction": current_traction})
 
         else:
@@ -226,6 +219,5 @@ def neighbor_contraction(sheet, manager, **kwargs):
                  np.sqrt(contraction_spec["contract_rate"]),
                  col="prefered_perimeter",
                  divide=True,
-                 bound=1,
+                 bound=np.sqrt(contraction_spec['critical_area'] / np.pi) * 2 * np.pi,
                  )
-

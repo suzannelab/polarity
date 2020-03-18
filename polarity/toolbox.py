@@ -92,14 +92,18 @@ def apoptosis_dorsal(sheet, code_fold=1):
             sheet.face_df.loc[i.Index, "apoptosis"] = 1
 
 
-def predefined_apoptotic_cell(sheet):
-    list_apopto = [0, 1, 2, 3]
+def define_apoptotic_pattern(sheet, code_fold=1):
+    """
+    Define apoptotic cell according to a probability to enter in apoptotis
+    More apoptotic cell in the ventral side of the tissue than in the dorsal side.
+    """
+    sheet.face_df.apoptosis = 0
+    apoptosis_ventral(sheet, code_fold)
+    apoptosis_lateral(sheet, code_fold)
+    apoptosis_dorsal(sheet, code_fold)
 
-    for i in list_apopto:
-        sheet.face_df.loc[i, 'apoptosis'] = 1
 
-
-def decrease_polarity_lateral(sheet, face, parallel_weighted, perpendicular_weighted):
+def decrease_polarity_lateral(sheet, face, parallel_weight, perpendicular_weight):
     edges = sheet.edge_df[sheet.edge_df["face"] == face]
     for index, edge in edges.iterrows():
         angle_ = np.arctan2(
@@ -111,12 +115,12 @@ def decrease_polarity_lateral(sheet, face, parallel_weighted, perpendicular_weig
             ((np.abs(angle_) > 5 * np.pi / 6) and (np.abs(angle_) < 7 * np.pi / 6)) or
                 ((np.abs(angle_) < -7 * np.pi / 6) and (np.abs(angle_) > -5 * np.pi / 6))):
 
-            sheet.edge_df.loc[edge.name, "weighted"] = perpendicular_weighted
+            sheet.edge_df.loc[edge.name, "weight"] = perpendicular_weight
         else:
-            sheet.edge_df.loc[edge.name, "weighted"] = parallel_weighted
+            sheet.edge_df.loc[edge.name, "weight"] = parallel_weight
 
 
-def decrease_polarity_dv(sheet, face, parallel_weighted, perpendicular_weighted):
+def decrease_polarity_dv(sheet, face, parallel_weight, perpendicular_weight):
     edges = sheet.edge_df[sheet.edge_df["face"] == face]
     for index, edge in edges.iterrows():
         angle_ = np.arctan2(
@@ -127,58 +131,58 @@ def decrease_polarity_dv(sheet, face, parallel_weighted, perpendicular_weighted)
                 ((np.abs(angle_) > -np.pi / 6) and (np.abs(angle_) < np.pi / 6)) or
             ((np.abs(angle_) > 5 * np.pi / 6) and (np.abs(angle_) < 7 * np.pi / 6)) or
                 ((np.abs(angle_) < -7 * np.pi / 6) and (np.abs(angle_) > -5 * np.pi / 6))):
-            sheet.edge_df.loc[edge.name, "weighted"] = perpendicular_weighted
+            sheet.edge_df.loc[edge.name, "weight"] = perpendicular_weight
         else:
-            sheet.edge_df.loc[edge.name, "weighted"] = parallel_weighted
+            sheet.edge_df.loc[edge.name, "weight"] = parallel_weight
 
 
-def define_polarity_old(sheet, parallel_weighted, perpendicular_weighted):
+def define_polarity_old(sheet, parallel_weight, perpendicular_weight):
     sheet.edge_df['id_'] = sheet.edge_df.index
 
     sheet2 = sheet.extract_bounding_box(y_boundary=(30, 150))
     [decrease_polarity_lateral(
-        sheet2, i, parallel_weighted, perpendicular_weighted) for i in range(sheet2.Nf)]
+        sheet2, i, parallel_weight, perpendicular_weight) for i in range(sheet2.Nf)]
     for i in (sheet2.edge_df.index):
         sheet.edge_df.loc[sheet.edge_df[sheet.edge_df.id_ == sheet2.edge_df.loc[
-            i, 'id_']].index, 'weighted'] = sheet2.edge_df.loc[i, 'weighted']
+            i, 'id_']].index, 'weight'] = sheet2.edge_df.loc[i, 'weight']
 
     sheet2 = sheet.extract_bounding_box(y_boundary=(-150, -30))
     [decrease_polarity_lateral(
-        sheet2, i, parallel_weighted, perpendicular_weighted) for i in range(sheet2.Nf)]
+        sheet2, i, parallel_weight, perpendicular_weight) for i in range(sheet2.Nf)]
     for i in (sheet2.edge_df.index):
         sheet.edge_df.loc[sheet.edge_df[sheet.edge_df.id_ == sheet2.edge_df.loc[
-            i, 'id_']].index, 'weighted'] = sheet2.edge_df.loc[i, 'weighted']
+            i, 'id_']].index, 'weight'] = sheet2.edge_df.loc[i, 'weight']
 
     sheet2 = sheet.extract_bounding_box(x_boundary=(-150, -30))
     [decrease_polarity_dv(
-        sheet2, i, parallel_weighted, perpendicular_weighted) for i in range(sheet2.Nf)]
+        sheet2, i, parallel_weight, perpendicular_weight) for i in range(sheet2.Nf)]
     for i in (sheet2.edge_df.index):
         sheet.edge_df.loc[sheet.edge_df[sheet.edge_df.id_ == sheet2.edge_df.loc[
-            i, 'id_']].index, 'weighted'] = sheet2.edge_df.loc[i, 'weighted']
+            i, 'id_']].index, 'weight'] = sheet2.edge_df.loc[i, 'weight']
 
     sheet2 = sheet.extract_bounding_box(x_boundary=(30, 150))
     [decrease_polarity_dv(
-        sheet2, i, parallel_weighted, perpendicular_weighted) for i in range(sheet2.Nf)]
+        sheet2, i, parallel_weight, perpendicular_weight) for i in range(sheet2.Nf)]
     for i in (sheet2.edge_df.index):
         sheet.edge_df.loc[sheet.edge_df[sheet.edge_df.id_ == sheet2.edge_df.loc[
-            i, 'id_']].index, 'weighted'] = sheet2.edge_df.loc[i, 'weighted']
+            i, 'id_']].index, 'weight'] = sheet2.edge_df.loc[i, 'weight']
 
     # Pour une cellule apoptotic, toutes les jonctions ont le même poids
     if 'apoptosis' in sheet.face_df.columns:
         for f in sheet.face_df[sheet.face_df.apoptosis == 1].index:
             for e in sheet.edge_df[sheet.edge_df.face == f].index:
-                sheet.edge_df.loc[e, 'weighted'] = 1.
+                sheet.edge_df.loc[e, 'weight'] = 1.
 
     if 'is_mesoderm' in sheet.face_df.columns:
         for f in sheet.face_df[sheet.face_df.is_mesoderm == 1].index:
             for e in sheet.edge_df[sheet.edge_df.face == f].index:
-                sheet.edge_df.loc[e, 'weighted'] = 1.
+                sheet.edge_df.loc[e, 'weight'] = 1.
 
 
-def define_polarity_dont_work(sheet, parallel_weighted, perpendicular_weighted):
+def define_polarity(sheet, parallel_weight, perpendicular_weight):
     # Angle θ of the source in the cylindrical coordinate system
-    theta = np.arctan2(sheet.edge_df["sy"], sheet.edge_df["sx"],)
-    cost, sint = np.cos(-theta), np.sin(-theta)
+    theta = np.arctan2(sheet.edge_df["sy"], sheet.edge_df["sx"],) + np.pi  # don't ask
+    cost, sint = np.cos(theta), np.sin(theta)
 
     # One rotation matrix per edge
     rot_mat = np.array(
@@ -196,14 +200,17 @@ def define_polarity_dont_work(sheet, parallel_weighted, perpendicular_weighted):
     sheet.edge_df[['dx_r', 'dy_r']] = np.einsum('jik, ki-> kj', rot_mat, dx_dy)
 
     # φ is the angle we want
-    sheet.edge_df["phi"] = np.arctan2(
-        sheet.edge_df['dz'], sheet.edge_df['dy_r'])
+    sheet.edge_df["phi"] = np.abs(np.arctan2(
+        sheet.edge_df['dz'], sheet.edge_df['dy_r']))
 
     for index in sheet.edge_df.index:
         if (sheet.edge_df.loc[index, 'phi'] > np.pi / 3) and (sheet.edge_df.loc[index, 'phi'] < 2 * np.pi / 3):
-            sheet.edge_df.loc[index, "weighted"] = perpendicular_weighted
+            sheet.edge_df.loc[index, "weight"] = perpendicular_weight
         else:
-            sheet.edge_df.loc[index, "weighted"] = parallel_weighted
+            sheet.edge_df.loc[index, "weight"] = parallel_weight
+
+
+
 
 
 def open_sheet(dirname, t=0, file_name = None, data_names=['vert', 'edge', 'face', 'cell']):

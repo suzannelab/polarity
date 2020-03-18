@@ -87,3 +87,9 @@ dist/
 ## pytest
 .pytest_cache
 
+
+notebooks/datas_max_depth_time\.txt
+
+notebooks/no_polarity_fig3\.svg
+
+notebooks/output\.pdf
