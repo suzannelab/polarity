@@ -8,9 +8,14 @@ from tyssue import Sheet
 from tyssue.io import hdf5
 from tyssue import config
 
+from ..settings import (apopto_pattern_kwargs,
+                        apoptosis_settings,
+                        contraction_lt_kwargs,
+                        delaminate_settings)
 
-def init(hf5_filename='superegg_final.hf5',
-         json_filename='superegg_final.json'):
+
+def init_tissue(hf5_filename='superegg_final.hf5',
+                json_filename='superegg_final.json'):
     """
     Initialisation of the superegg tissue
     """
@@ -32,9 +37,29 @@ def modify_some_initial_settings(sheet):
     Need to find an other name function...
     """
     sheet.settings['geometry'] = "spherical"
-    sheet.settings['lumen_volume_elasticity'] = 3.e-6
+    sheet.settings['lumen_vol_elasticity'] = 1.e-5
+
+    sheet.settings['barrier_radius'] = 100
+    sheet.vert_df['barrier_elasticity'] = 280.0
+
+    sheet.settings['apopto_pattern_kwargs'] = apopto_pattern_kwargs
+    sheet.settings['apoptosis'] = apoptosis_settings
+    sheet.settings['contraction_lt_kwargs'] = contraction_lt_kwargs
+    sheet.settings['delaminate_setting'] = delaminate_settings
+
+    sheet.edge_df['weight'] = 1.
+    sheet.edge_df['weight_length'] = sheet.edge_df.weight * \
+        sheet.edge_df.length
 
     sheet.face_df['apoptosis'] = 0
+    sheet.face_df['current_traction'] = 0.0
+    sheet.face_df['radial_tension'] = 0.0
+    sheet.face_df['prefered_perimeter'] = 2 * \
+        np.sqrt(sheet.face_df['prefered_area'])
+    sheet.face_df['perimeter_elasticity'] = 10.
+    sheet.face_df['area_elasticity'] = 1.
+    sheet.face_df['apoptosis'] = 0
+
     sheet.vert_df['viscosity'] = 0.1
 
 
@@ -136,7 +161,7 @@ def decrease_polarity_dv(sheet, face, parallel_weight, perpendicular_weight):
             sheet.edge_df.loc[edge.name, "weight"] = parallel_weight
 
 
-def define_polarity_old(sheet, parallel_weight, perpendicular_weight):
+def define_polarity(sheet, parallel_weight, perpendicular_weight):
     sheet.edge_df['id_'] = sheet.edge_df.index
 
     sheet2 = sheet.extract_bounding_box(y_boundary=(30, 150))
@@ -179,41 +204,7 @@ def define_polarity_old(sheet, parallel_weight, perpendicular_weight):
                 sheet.edge_df.loc[e, 'weight'] = 1.
 
 
-def define_polarity(sheet, parallel_weight, perpendicular_weight):
-    # Angle θ of the source in the cylindrical coordinate system
-    theta = np.arctan2(sheet.edge_df["sy"], sheet.edge_df["sx"],) + np.pi  # don't ask
-    cost, sint = np.cos(theta), np.sin(theta)
-
-    # One rotation matrix per edge
-    rot_mat = np.array(
-        [[cost, sint],
-         [-sint, cost]]
-    )
-    #print('Shape of rotation matrices', rot_mat.shape)
-
-    # We want to get the edge coordinates w/r to θ
-    dx_dy = sheet.edge_df[['dx', 'dy']].to_numpy()
-    sheet.edge_df['dx_r'] = sheet.edge_df['dx'].copy()
-    sheet.edge_df['dy_r'] = sheet.edge_df['dy'].copy()
-
-    # numpy einsum magic (need lots of trial and error :/)
-    sheet.edge_df[['dx_r', 'dy_r']] = np.einsum('jik, ki-> kj', rot_mat, dx_dy)
-
-    # φ is the angle we want
-    sheet.edge_df["phi"] = np.abs(np.arctan2(
-        sheet.edge_df['dz'], sheet.edge_df['dy_r']))
-
-    for index in sheet.edge_df.index:
-        if (sheet.edge_df.loc[index, 'phi'] > np.pi / 3) and (sheet.edge_df.loc[index, 'phi'] < 2 * np.pi / 3):
-            sheet.edge_df.loc[index, "weight"] = perpendicular_weight
-        else:
-            sheet.edge_df.loc[index, "weight"] = parallel_weight
-
-
-
-
-
-def open_sheet(dirname, t=0, file_name = None, data_names=['vert', 'edge', 'face', 'cell']):
+def open_sheet(dirname, t=0, file_name=None, data_names=['vert', 'edge', 'face', 'cell']):
     """Open hdf5 file
 
     Open HDF5 file correspond to t time from dirname directory.

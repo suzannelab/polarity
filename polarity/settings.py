@@ -4,7 +4,7 @@ from polarity.dynamics import EllipsoidLameGeometry as geom
 apopto_pattern_kwargs = {'t': 0.,
                          'dt': 1.,
                          'time_of_last_apoptosis': 30.}
-# apoptose
+# Apoptosis
 apoptosis_settings = {
     "critical_area_pulling": 10,
     "critical_area": 0.5,
@@ -12,13 +12,13 @@ apoptosis_settings = {
     "basal_contract_rate": 1.01,
     "contract_neighbors": True,
     "contract_span": 3,
-    "radial_tension": 30.,
+    "radial_tension": 50.,
     "max_traction": 30.,
     "current_traction": 0.,
     "geom": geom,
 }
 
-# pour la propagation aux voisins
+# Neighbors propagation
 contraction_lt_kwargs = {
     'face_id': -1,
     'face': -1,
@@ -28,15 +28,10 @@ contraction_lt_kwargs = {
     "model": model,
 }
 
-# Add events to limit rosette
-rosette_kwargs = {
-    'threshold_length': 1e-6,
-    'p_4': 0.9,
-    'p_5p': 0.9}
 
-# clone perturbateur
+# Mechanical perturbation
 delaminate_settings = {
-    'radial_tension': 30,
+    'radial_tension': 80,
     "contract_rate": 1.08,
     "critical_area_pulling": 15,
     "critical_area": 1e-2,
