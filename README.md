@@ -1,6 +1,6 @@
 # Polarity
 
-![Sample output from the model](data/svg/header.svg) [**Need to be updated**]
+![Sample output from the model](data/header.svg)
 
 [![DOI](https://zenodo.org/badge/185421680.svg)](https://zenodo.org/badge/latestdoi/185421680) [**Need to be updated**]
 
