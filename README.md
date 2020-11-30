@@ -9,7 +9,7 @@ This is a leg fold formation simulation package for the article:
 
 ### Mechanical control of morphogenesis robustness in an inherently challenging environment
 
-Emmanuel Martin, Sophie Theis, Guillaume Gay, Bruno Monier, and Magali Suzanne https://www.nature.com/articles/s41467-019-10720-0 [**Need to be updated**]
+Emmanuel Martin, Sophie Theis, Guillaume Gay, Bruno Monier, and Magali Suzanne (**link**).
 
 
 
