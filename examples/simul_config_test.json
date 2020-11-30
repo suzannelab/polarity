@@ -1,0 +1,28 @@
+{   "various":
+        {"author": "st",
+         "date": "01012019"
+        },
+    "solver":
+        {"solver": "QSSolver",
+         "with_T1": false,
+         "with_T3": false,
+         "with_collisions": false
+        },
+    "simulation":
+        {
+            "time_step": 1.0,
+            "nb_steps": 150.0,
+            "viscosity": 0.1
+        },
+
+	"settings":
+		{"geometry": "cylindrical",
+		 "height_axis": "z",
+		 "nrj_norm_factor": 784,
+		 "lumen_prefered_vol": 1655117.87836963126,
+		 "lumen_vol": 1653762.4584016968,
+		 "lumen_vol_elasticity": 0.00002,
+		 "threshold_length": 0.1
+		}
+
+}

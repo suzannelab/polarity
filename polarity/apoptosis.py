@@ -1,23 +1,22 @@
 import numpy as np
 from tyssue.utils.decorators import face_lookup
 from tyssue.geometry.sheet_geometry import SheetGeometry
-from tyssue.behaviors.sheet.actions import (ab_pull,
-                                            exchange,
+from tyssue.behaviors.sheet.actions import (exchange,
                                             remove,
                                             decrease,
                                             increase_linear_tension,
                                             set_value)
-from tyssue.behaviors.sheet.basic_events import contraction_line_tension
+
 
 default_pattern = {
     "t": 0.,
-    "dt": 0.1,
+    "dt": 1.,
     "time_of_last_apoptosis": 30
 }
 
 
 def apoptosis_patterning(sheet, manager, **kwargs):
-    """Pattern of face apoptosis entry.
+    """Pattern of cell enter in apoptosis.
 
     Apoptotic cell enter in apoptosis by following a time dependent pattern from
     ventral to dorsal part of the leg tissue.
@@ -36,20 +35,27 @@ def apoptosis_patterning(sheet, manager, **kwargs):
     t = specs['t']
     end = specs["time_of_last_apoptosis"]
 
+    # -t * max(phi)/t_end + max(phi)
     phi_min = -t * max(np.abs(sheet.face_df.phi)) / \
         end + max(np.abs(sheet.face_df.phi))
 
     l_index_apoptosis_cell = sheet.face_df[(np.abs(sheet.face_df.phi) > phi_min) &
                                            (sheet.face_df.apoptosis > 0)
-                                           ].index.values
+                                           ].id.values
     apopto_kwargs = sheet.settings['apoptosis'].copy()
     for c in l_index_apoptosis_cell:
-        apopto_kwargs.update(
-            {
-                'face_id': c,
-            }
-        )
-        manager.append(apoptosis, **apopto_kwargs)
+        if c in sheet.face_df.id:
+            apopto_kwargs.update(
+                {
+                    'face_id': c,
+                }
+            )
+            notpresent = True
+            for tup in manager.current:
+                if c in tup[1]:
+                    notpresent = False
+            if notpresent:
+                manager.append(apoptosis, **apopto_kwargs)
 
     specs.update({"t": specs['t'] + specs['dt']})
     manager.append(apoptosis_patterning, **specs)
@@ -58,8 +64,8 @@ def apoptosis_patterning(sheet, manager, **kwargs):
 default_apoptosis_spec = {
     "face_id": -1,
     "face": -1,
-    "shrink_rate": 1.1,
     "critical_area": 1e-2,
+    "critical_area_pulling": 10,
     "radial_tension": 0.1,
     "contract_rate": 0.1,
     "basal_contract_rate": 1.001,
@@ -109,36 +115,35 @@ def apoptosis(sheet, manager, **kwargs):
         decrease(sheet,
                  'face',
                  face,
-                 apoptosis_spec["shrink_rate"],
+                 apoptosis_spec["contract_rate"],
                  col="prefered_area",
                  divide=True,
-                 bound=apoptosis_spec["critical_area"] / 2,
+                 bound=apoptosis_spec["critical_area"],
                  )
 
-        increase_linear_tension(
-            sheet,
-            face,
-            apoptosis_spec['contract_rate'] * dt,
-            multiple=True,
-            isotropic=True,
-            limit=100)
+        decrease(sheet,
+                 'face',
+                 face,
+                 np.sqrt(apoptosis_spec["contract_rate"]),
+                 col="prefered_perimeter",
+                 divide=True,
+                 )
 
         # contract neighbors
         neighbors = sheet.get_neighborhood(
             face, apoptosis_spec["contract_span"]
         ).dropna()
-        neighbors["id"] = sheet.face_df.loc[neighbors.face, "id"].values
         manager.extend(
             [
                 (
-                    contraction_line_tension,
+                    neighbor_contraction,
                     _neighbor_contractile_increase(
-                        neighbor, dt, apoptosis_spec),
+                        neighbor, dt, apoptosis_spec, sheet),
                 )
                 for _, neighbor in neighbors.iterrows()
             ])
 
-    if face_area < apoptosis_spec["critical_area"]:
+    if face_area < apoptosis_spec["critical_area_pulling"]:
         if current_traction < apoptosis_spec["max_traction"]:
             # AB pull
             set_value(sheet,
@@ -146,65 +151,73 @@ def apoptosis(sheet, manager, **kwargs):
                       face,
                       apoptosis_spec['radial_tension'],
                       col="radial_tension")
+
             current_traction = current_traction + dt
             apoptosis_spec.update({"current_traction": current_traction})
 
-        elif current_traction >= apoptosis_spec["max_traction"]:
+        else:
             if sheet.face_df.loc[face, "num_sides"] > 3:
                 exchange(sheet, face, apoptosis_spec["geom"])
             else:
                 remove(sheet, face, apoptosis_spec["geom"])
                 return
 
-    manager.append(apoptosis, **apoptosis_spec)
+    if apoptosis_spec["face_id"] in (sheet.face_df.id):
+        manager.append(apoptosis, **apoptosis_spec)
 
 
-def _neighbor_contractile_increase(neighbor, dt, apoptosis_spec):
+def _neighbor_contractile_increase(neighbor, dt, apoptosis_spec, sheet):
 
-    contract = apoptosis_spec["contract_rate"]
-    basal_contract = apoptosis_spec["basal_contract_rate"]
+    specs = sheet.settings['contraction_lt_kwargs'].copy()
 
     increase = (
-        -(contract - basal_contract) / apoptosis_spec["contract_span"]
-    ) * neighbor["order"] + contract
+        -(apoptosis_spec['contract_rate'] - apoptosis_spec['basal_contract_rate']
+          ) / apoptosis_spec["contract_span"]
+    ) * neighbor["order"] + apoptosis_spec['contract_rate']
 
-    specs = {
-        "face_id": neighbor["id"],
-        "contractile_increase": increase * dt,
-        "critical_area": apoptosis_spec["critical_area"],
-        "max_contractility": 50,
-        "multiple": True,
-        "unique": False,
-    }
-
+    specs.update({
+        "face_id": neighbor.face,
+        "contract_rate": increase,
+        "unique": False
+    })
     return specs
 
 
-def propagate_line_tension(sheet, face):
-    neighbors = sheet.get_neighborhood(face, 8).dropna()
+default_contraction_line_tension_spec = {
+    "face_id": -1,
+    "face": -1,
+    "contract_rate": 1.05,
+    "critical_area": 5.,
+    "model": None,
+}
 
-    for _, neighbor in neighbors.iterrows():
-        print(neighbor.face, neighbor.order)
-        V1 = (sheet.face_df.loc[face][sheet.coords] -
-              sheet.face_df.loc[neighbor][sheet.coords])
-        # Axe proximo-distale -> à choisir en le passant en paramètre ?
-        V2 = [0, 0, 1]
-        dot_product = np.dot(V1, V2)
-        d_V1 = np.sqrt(V1.x**2 + V1.y**2 + V1.z**2)
-        d_V2 = np.sqrt(V2[0]**2 + V2[1]**2 + V2[2]**2)
 
-        angle = np.arccosh(dot_product / (d_V1 * d_V2))
+@face_lookup
+def neighbor_contraction(sheet, manager, **kwargs):
+    """
+    Single step contraction event
+    """
+    contraction_spec = default_contraction_line_tension_spec
+    contraction_spec.update(**kwargs)
+    face = contraction_spec["face"]
+    if sheet.face_df.loc[face].apoptosis == 1:
+        return
 
-        if (angle >= (np.pi / 3)) and (angle <= (2 * np.pi / 3)):
+    if sheet.face_df.loc[face, "prefered_area"] > contraction_spec['critical_area']:
 
-            # augmenter "beaucoup" la tension linéaire sur 7/8 voisins
-            # ou augmenter la tension linéaire que pour les jonctions parralèle
-            # au pli ?
-            pass
-        else:
-            # augmenter "légèrement" la tension linéaire sur 2/3 voisins
-            # ou augmenter la tension linéaire que pour les jonctions
-            # perpendiculaire au pli ?
-            pass
-
-    return
+        decrease(sheet,
+                 'face',
+                 face,
+                 contraction_spec["contract_rate"],
+                 col="prefered_area",
+                 divide=True,
+                 bound=contraction_spec['critical_area'],
+                 )
+        decrease(sheet,
+                 'face',
+                 face,
+                 np.sqrt(contraction_spec["contract_rate"]),
+                 col="prefered_perimeter",
+                 divide=True,
+                 bound=np.sqrt(contraction_spec['critical_area'] / np.pi) * 2 * np.pi,
+                 )
