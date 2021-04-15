@@ -2,20 +2,25 @@
 
 ![Sample output from the model](data/header.svg)
 
-[![DOI](https://zenodo.org/badge/185421680.svg)](https://zenodo.org/badge/latestdoi/185421680) [**Need to be updated**]
-
 
 This is a leg fold formation simulation package for the article:
 
 ### Mechanical control of morphogenesis robustness in an inherently challenging environment
 
-Emmanuel Martin, Sophie Theis, Guillaume Gay, Bruno Monier, and Magali Suzanne (**link**).
+Emmanuel Martin<sup>1</sup>, Sophie Theis<sup>(1,2)</sup>, Guillaume Gay<sup>(2,3)</sup>, Bruno Monier<sup>1</sup>, Christian Rouviere<sup>4</sup> and Magali Suzanne<sup>1</sup>.
+
+<sup>1</sup>Molecular, Cellular & Developmental Biology (MCD), Center of Integrative Biology (CBI), Toulouse University, CNRS, UPS, Toulouse, France.
+<sup>2</sup>Morphogénie Logiciels, 32110 St Martin d'Armagnac, France.
+<sup>3</sup>Turing Center For Living Systems, Aix-MarseilleUniversity, 13009, Marseille, France.
+<sup>4</sup>Image Processing Facility, Center of Integrative Biology (CBI), Université de Toulouse, CNRS, UPS, France.
+
+[Article](https://www.cell.com/developmental-cell/fulltext/S1534-5807(21)00036-8?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS1534580721000368%3Fshowall%3Dtrue)
 
 
 
 ## Try it with my binder by clicking the badge bellow:
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/suzannelab/invagination/master?filepath=notebooks%2FIndex.ipynb) [**Need to be updated**]
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/suzannelab/polarity/HEAD) 
 
 
 ## Dependencies
