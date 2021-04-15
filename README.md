@@ -7,11 +7,12 @@ This is a leg fold formation simulation package for the article:
 
 ### Mechanical control of morphogenesis robustness in an inherently challenging environment
 
-Emmanuel Martin^1, Sophie Theis^(1,2), Guillaume Gay^(2,3), Bruno Monier^1, Christian Rouviere^4 and Magali Suzanne^1.
-1-Molecular, Cellular & Developmental Biology (MCD), Center of Integrative Biology (CBI), Toulouse University, CNRS, UPS, Toulouse, France.
-2-Morphogénie Logiciels, 32110 St Martin d'Armagnac, France.
-3-Turing Center For Living Systems, Aix-MarseilleUniversity, 13009, Marseille, France.
-4-Image Processing Facility, Center of Integrative Biology (CBI), Université de Toulouse, CNRS, UPS, France.
+Emmanuel Martin<sup>1</sup>, Sophie Theis<sup>(1,2)</sup>, Guillaume Gay<sup>(2,3)</sup>, Bruno Monier<sup>1</sup>, Christian Rouviere<sup>4</sup> and Magali Suzanne<sup>1</sup>.
+
+<sup>1</sup>Molecular, Cellular & Developmental Biology (MCD), Center of Integrative Biology (CBI), Toulouse University, CNRS, UPS, Toulouse, France.
+<sup>2</sup>Morphogénie Logiciels, 32110 St Martin d'Armagnac, France.
+<sup>3</sup>Turing Center For Living Systems, Aix-MarseilleUniversity, 13009, Marseille, France.
+<sup>4</sup>Image Processing Facility, Center of Integrative Biology (CBI), Université de Toulouse, CNRS, UPS, France.
 
 [Article](https://www.cell.com/developmental-cell/fulltext/S1534-5807(21)00036-8?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS1534580721000368%3Fshowall%3Dtrue)
 
