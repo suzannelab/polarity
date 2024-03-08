@@ -1,50 +1,55 @@
-{	"vert": 
-		{"z": 0.0, 
-		 "x": 0.0, 
-		 "is_active": true, 
+{	"vert":
+		{"z": 0.0,
+		 "x": 0.0,
+		 "is_active": true,
 		 "y": 0.0,
-		 "rho": 0, 
-		 "height": 0,
-		 "radial_tension": 0
-		}, 
+		 "rho": 0.0,
+		 "height": 0.0,
+		 "radial_tension": 0.0
+		},
 
   	"face":
-  		 {"z": 0.0, 
-  		  "x": 0.0, 
-  		 "num_sides": 6, 
-  		 "area": 1.0, 
-  		 "perimeter": 1.0, 
-  		 "is_alive": true, 
-  		 "y": 0.0, 
-  		 "contractility": 
-  		 1.52, 
-  		 "prefered_area": 45, 
-  		 "area_elasticity": 1
-  		}, 
-	"edge": 
-		{"dz": 0.0, 
-		 "ny": 0.0, 
-		 "dx": 0.0, 
-		 "nx": 0.0, 
-		 "length": 0.0, 
-		 "sub_vol": 0.0, 
-		 "sub_area": 0.0, 
-		 "srce": 0, 
+  		 {"z": 0.0,
+  		  "x": 0.0,
+  		 "num_sides": 6,
+  		 "area": 1.0,
+  		 "perimeter": 1.0,
+  		 "is_alive": true,
+  		 "y": 0.0,
+  		 "contractility": 1.52,
+  		 "prefered_area": 45.0,
+  		 "area_elasticity": 1.0
+  		},
+	"edge":
+		{"dz": 0.0,
+		 "ny": 0.0,
+		 "dx": 0.0,
+		 "nx": 0.0,
+		 "length": 0.0,
+		 "sub_vol": 0.0,
+		 "sub_area": 0.0,
+		 "srce": 0,
 		 "face": 0,
 		 "cell": 0,
-		 "dy": 0.0, 
-		 "trgt": 0, 
+		 "dy": 0.0,
+		 "trgt": 0,
 		 "nz": 1.0,
 		 "line_tension": 0.0,
+         "weight": 1.0,
 		 "is_active": 1
 		},
-	"settings": 
-		{"geometry": "cylindrical", 
+	"settings":
+		{"geometry": "cylindrical",
 		 "height_axis": "z",
 		 "nrj_norm_factor": 784,
 		 "lumen_prefered_vol": 1655117.87836963126,
 		 "lumen_vol": 1653762.4584016968,
 		 "lumen_vol_elasticity": 0.00002,
-		 "threshold_length": 0.1
+		 "threshold_length": 0.1,
+         "rosette_kwargs": {
+             "threshold_length": 0.01,
+             "p_4": 1e-2,
+             "p_5": 1e-3
+         }
 		}
 }

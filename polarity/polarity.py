@@ -55,7 +55,7 @@ def polarity_process(sim_save_dir,
 
     res = solver.find_energy_min(sheet, geom, model, options={"gtol": 1e-8})
     if res.success is False:
-        raise ('Stop because solver didn''t succeed', res)
+        raise ValueError('Stop because solver didn''t succeed', res)
 
     sheet_ = run_sim(sim_save_dir, sheet, polarity, perturbation)
 
@@ -95,11 +95,7 @@ def run_sim(sim_save_dir,
     sheet.face_df['id'] = sheet.face_df.index.values
 
     # Initiate history
-    history = HistoryHdf5(sheet,
-                          extra_cols={"face": sheet.face_df.columns,
-                                      "edge": list(sheet.edge_df.columns),
-                                      "vert": list(sheet.vert_df.columns)},
-                          hf5file=os.path.join(sim_save_dir, filename))
+    history = HistoryHdf5(sheet, hf5file=os.path.join(sim_save_dir, filename))
 
     # Initiate manager
     manager = EventManager('face')
@@ -135,7 +131,8 @@ def run_sim(sim_save_dir,
         res = solver.find_energy_min(
             sheet, geom, model, options={"gtol": 1e-8})
         if res.success is False:
-            raise ('Stop because solver didn''t succeed at time t ' + str(t), res)
+            msg = f'Stop because solver didn''t succeed at t={t}'
+            raise ValueError(msq, res)
 
         # add noise on vertex position to avoid local minimal.
         sheet.vert_df[
